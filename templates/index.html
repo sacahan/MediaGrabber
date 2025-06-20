@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediaGrabber Web GUI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto p-6">
+    <h1 id="pageTitle" class="text-3xl font-bold mb-6">MediaGrabber Web GUI</h1>
+    <div class="mb-4 border-b border-gray-200">
+      <nav class="flex space-x-4">
+        <button type="button" id="tab-youtube" class="px-3 py-2 font-medium text-blue-600 border-b-2 border-blue-600">YouTube</button>
+        <button type="button" id="tab-facebook" class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300">Facebook</button>
+        <button type="button" id="tab-instagram" class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300">Instagram</button>
+      </nav>
+    </div>
+    <form id="downloadForm" class="space-y-4">
+      <div>
+        <label for="url" id="urlLabel" class="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
+        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      <div id="thumbnailContainer" class="mb-4 flex justify-center hidden">
+        <img id="thumbnailPreview" class="max-w-xs rounded shadow" src="" alt="Video Thumbnail">
+      </div>
+      <div id="titleContainer" class="mb-4 text-center hidden">
+        <h2 id="titlePreview" class="text-xl font-semibold text-gray-800"></h2>
+      </div>
+      <button type="submit" id="downloadBtn" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Download</button>
+      <button type="button" id="clearBtn" class="ml-2 inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Clear</button>
+    </form>
+    <div id="message" class="mt-4 text-gray-700"></div>
+    <div id="progressContainer" class="mt-4 hidden">
+      <progress id="downloadProgress" class="w-full" value="0" max="0"></progress>
+      <div id="progressText" class="mt-1 text-sm text-gray-600"></div>
+    </div>
+  </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    var activeTab = 'youtube';
+    var tabButtons = {
+      youtube: document.getElementById('tab-youtube'),
+      facebook: document.getElementById('tab-facebook'),
+      instagram: document.getElementById('tab-instagram')
+    };
+    var pageTitle = document.getElementById('pageTitle');
+    var urlLabel = document.getElementById('urlLabel');
+    var urlInput = document.getElementById('url');
+    var thumbContainer = document.getElementById('thumbnailContainer');
+    var thumbImage = document.getElementById('thumbnailPreview');
+    var form = document.getElementById('downloadForm');
+    var downloadBtn = document.getElementById('downloadBtn');
+    var titleContainer = document.getElementById('titleContainer');
+    var titlePreview = document.getElementById('titlePreview');
+    var messageDiv = document.getElementById('message');
+    var clearBtn = document.getElementById('clearBtn');
+    var progressContainer = document.getElementById('progressContainer');
+    var progressBar = document.getElementById('downloadProgress');
+    var progressText = document.getElementById('progressText');
+
+    Object.keys(tabButtons).forEach(function(key){
+      tabButtons[key].addEventListener('click', function(){
+        if(activeTab === key) return;
+        tabButtons[activeTab].classList.remove('text-blue-600','border-blue-600');
+        tabButtons[activeTab].classList.add('text-gray-600','border-transparent');
+        tabButtons[key].classList.remove('text-gray-600','border-transparent');
+        tabButtons[key].classList.add('text-blue-600','border-blue-600');
+        activeTab = key;
+        var name = key.charAt(0).toUpperCase() + key.slice(1);
+        var ext = (key === 'youtube' ? 'MP3' : 'MP4');
+        pageTitle.textContent = name + ' to ' + ext + ' (Web GUI)';
+        urlLabel.textContent = name + ' URL';
+        if(key === 'youtube'){
+          urlInput.placeholder = 'https://www.youtube.com/watch?v=...';
+        } else if(key === 'facebook'){
+          urlInput.placeholder = 'https://www.facebook.com/...';
+        } else {
+          urlInput.placeholder = 'https://www.instagram.com/...';
+        }
+        urlInput.value = '';
+        titleContainer.classList.add('hidden');
+        thumbContainer.classList.add('hidden');
+        messageDiv.textContent = '';
+        progressContainer.classList.add('hidden');
+      });
+    });
+
+    function fetchMetadata(url){
+      fetch('/metadata', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url: url})
+      }).then(function(resp){ return resp.json(); })
+        .then(function(data){
+          if(data.title){
+            titlePreview.textContent = data.title;
+            titleContainer.classList.remove('hidden');
+          } else {
+            titleContainer.classList.add('hidden');
+          }
+          if(data.thumbnail){
+            thumbImage.src = data.thumbnail;
+            thumbContainer.classList.remove('hidden');
+          } else {
+            thumbContainer.classList.add('hidden');
+          }
+        }).catch(function(){
+          titleContainer.classList.add('hidden');
+          thumbContainer.classList.add('hidden');
+        });
+    }
+
+    urlInput.addEventListener('input', function(){
+      var val = urlInput.value.trim();
+      var cleanUrl = val;
+      var showMeta = false;
+      if(activeTab === 'youtube'){
+        var m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+        if(m){
+          cleanUrl = 'https://www.youtube.com/watch?v=' + m[1];
+          showMeta = true;
+        }
+      } else if(activeTab === 'facebook'){
+        if(val.includes('facebook.com') || val.includes('fb.watch')){
+          showMeta = true;
+        }
+      } else if(activeTab === 'instagram'){
+        if(val.includes('instagram.com')){
+          showMeta = true;
+        }
+      }
+      if(showMeta){
+        fetchMetadata(cleanUrl);
+      } else {
+        titleContainer.classList.add('hidden');
+        thumbContainer.classList.add('hidden');
+      }
+      messageDiv.textContent = '';
+      progressContainer.classList.add('hidden');
+      progressBar.value = 0;
+      progressBar.max = 0;
+      progressText.textContent = '';
+    });
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var rawUrl = urlInput.value.trim();
+      if(!rawUrl) return;
+      var sendUrl = rawUrl;
+      if(activeTab === 'youtube'){
+        var m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+        if(m2) sendUrl = 'https://www.youtube.com/watch?v=' + m2[1];
+      }
+      downloadBtn.disabled = true;
+      messageDiv.textContent = '';
+      progressBar.value = 0;
+      progressBar.max = 0;
+      progressText.textContent = '';
+      progressContainer.classList.remove('hidden');
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/download');
+      xhr.responseType = 'blob';
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        if(xhr.status === 200){
+          var disposition = xhr.getResponseHeader('Content-Disposition') || '';
+          var filename = 'audio.mp3';
+          var fnMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+          if(fnMatch && fnMatch[1]) filename = decodeURIComponent(fnMatch[1]);
+          else {
+            var fb = disposition.match(/filename=\"?([^\"]+)\"?/i);
+            if(fb && fb[1]) filename = fb[1];
+          }
+          var link = document.createElement('a');
+          link.href = URL.createObjectURL(xhr.response);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          messageDiv.textContent = 'Download completed.';
+        } else {
+          messageDiv.textContent = 'Error: ' + xhr.statusText;
+        }
+        downloadBtn.disabled = false;
+      };
+      xhr.onerror = function(){
+        messageDiv.textContent = 'Download failed.';
+        downloadBtn.disabled = false;
+      };
+      xhr.onprogress = function(evt){
+        if(evt.lengthComputable){
+          progressBar.max = evt.total;
+          progressBar.value = evt.loaded;
+          progressText.textContent = Math.floor((evt.loaded/evt.total)*100) + '%';
+        }
+      };
+      xhr.send(JSON.stringify({url: sendUrl, source: activeTab}));
+    });
+
+    clearBtn.addEventListener('click', function(){
+      urlInput.value = '';
+      titleContainer.classList.add('hidden');
+      thumbContainer.classList.add('hidden');
+      messageDiv.textContent = '';
+      progressContainer.classList.add('hidden');
+    });
+  });
+  </script>
+</body>
+</html>
