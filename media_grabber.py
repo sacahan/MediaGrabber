@@ -8,6 +8,8 @@ from pathlib import Path
 
 from yt_dlp import YoutubeDL
 from tqdm import tqdm
+import time
+import re
 
 
 def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
@@ -15,6 +17,17 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
     Download a YouTube video and extract audio as MP3 using yt-dlp and ffmpeg.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    # determine filename: if title too long or contains reserved chars, use timestamp
+    meta_opts = {'quiet': True, 'no_warnings': True, 'noplaylist': True}
+    with YoutubeDL(meta_opts) as ydl_meta:
+        info = ydl_meta.extract_info(url, download=False)
+    title = info.get('title') or ''
+    # reserved characters: <>:"/\\|?* and overly long names
+    if len(title) > 30 or re.search(r'[<>:\"/\\|?*]', title):
+        basename = str(int(time.time()))
+    else:
+        basename = title
+    outtmpl = str(output_dir / f"{basename}.%(ext)s")
     if progress_hook is None:
         progress = {"pbar": None}
 
@@ -38,7 +51,7 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
 
     ydl_opts = {
         "format": "bestaudio/best",
-        "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
+        "outtmpl": outtmpl,
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
@@ -60,6 +73,16 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
     Download a video (video + audio) and merge into MP4 using yt-dlp and ffmpeg.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    # determine filename: if title too long or contains reserved chars, use timestamp
+    meta_opts = {'quiet': True, 'no_warnings': True, 'noplaylist': True}
+    with YoutubeDL(meta_opts) as ydl_meta:
+        info = ydl_meta.extract_info(url, download=False)
+    title = info.get('title') or ''
+    if len(title) > 30 or re.search(r'[<>:\"/\\|?*]', title):
+        basename = str(int(time.time()))
+    else:
+        basename = title
+    outtmpl = str(output_dir / f"{basename}.%(ext)s")
     if progress_hook is None:
         progress = {"pbar": None}
 
@@ -84,11 +107,20 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
     ydl_opts = {
         "format": "bestvideo+bestaudio",
         "merge_output_format": "mp4",
-        "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
+        "outtmpl": outtmpl,
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
         "progress_hooks": [hook],
+        "postprocessors": [
+            {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}
+        ],
+        "postprocessor_args": [
+            "-c:v", "libx264",
+            "-r", "30",
+            "-x264-params",
+            "level=4.0:ref=2:8x8dct=0:weightp=1:subme=6:vbv-bufsize=25000:vbv-maxrate=20000:rc-lookahead=30"
+        ],
     }
 
     with YoutubeDL(ydl_opts) as ydl:

@@ -155,48 +155,49 @@
       downloadBtn.disabled = true;
       messageDiv.textContent = '';
       progressBar.value = 0;
-      progressBar.max = 0;
+      progressBar.max = 100;
       progressText.textContent = '';
       progressContainer.classList.remove('hidden');
 
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/download');
-      xhr.responseType = 'blob';
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.onload = function() {
-        if(xhr.status === 200){
-          var disposition = xhr.getResponseHeader('Content-Disposition') || '';
-          var filename = 'audio.mp3';
-          var fnMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-          if(fnMatch && fnMatch[1]) filename = decodeURIComponent(fnMatch[1]);
-          else {
-            var fb = disposition.match(/filename=\"?([^\"]+)\"?/i);
-            if(fb && fb[1]) filename = fb[1];
-          }
-          var link = document.createElement('a');
-          link.href = URL.createObjectURL(xhr.response);
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          messageDiv.textContent = 'Download completed.';
-        } else {
-          messageDiv.textContent = 'Error: ' + xhr.statusText;
+      fetch('/download_start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url: sendUrl, source: activeTab})
+      }).then(function(resp){ return resp.json(); }).then(function(data){
+        if(data.error){
+          messageDiv.textContent = 'Error: ' + data.error;
+          downloadBtn.disabled = false;
+          return;
         }
-        downloadBtn.disabled = false;
-      };
-      xhr.onerror = function(){
+        var jobId = data.job_id;
+        var poll = setInterval(function(){
+          fetch('/progress/' + jobId).then(function(r){ return r.json(); }).then(function(statusData){
+            if(statusData.error){
+              messageDiv.textContent = 'Error: ' + statusData.error;
+              clearInterval(poll);
+              downloadBtn.disabled = false;
+              return;
+            }
+            var p = statusData.progress || 0;
+            progressBar.value = p;
+            progressText.textContent = p + '%';
+            if(statusData.status === 'done'){
+              clearInterval(poll);
+              var link = document.createElement('a');
+              link.href = '/download_file/' + jobId;
+              link.download = '';
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              messageDiv.textContent = 'Download completed.';
+              downloadBtn.disabled = false;
+            }
+          });
+        }, 500);
+      }).catch(function(){
         messageDiv.textContent = 'Download failed.';
         downloadBtn.disabled = false;
-      };
-      xhr.onprogress = function(evt){
-        if(evt.lengthComputable){
-          progressBar.max = evt.total;
-          progressBar.value = evt.loaded;
-          progressText.textContent = Math.floor((evt.loaded/evt.total)*100) + '%';
-        }
-      };
-      xhr.send(JSON.stringify({url: sendUrl, source: activeTab}));
+      });
     });
 
     clearBtn.addEventListener('click', function(){
