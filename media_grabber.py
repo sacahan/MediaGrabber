@@ -37,7 +37,10 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
                     progress["pbar"] = tqdm(
-                        total=total, unit="B", unit_scale=True, desc="Downloading"
+                        total=total,
+                        unit="B",
+                        unit_scale=True,
+                        desc="Downloading",
                     )
                 progress["pbar"].update(
                     d.get("downloaded_bytes", 0) - progress["pbar"].n
@@ -92,7 +95,10 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
                     progress["pbar"] = tqdm(
-                        total=total, unit="B", unit_scale=True, desc="Downloading"
+                        total=total,
+                        unit="B",
+                        unit_scale=True,
+                        desc="Downloading",
                     )
                 progress["pbar"].update(
                     d.get("downloaded_bytes", 0) - progress["pbar"].n
