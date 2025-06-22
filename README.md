@@ -1,8 +1,8 @@
 # MediaGrabber
 
 A simple Python downloader:
-- **YouTube → MP3** via CLI or Web GUI
-- **Facebook → MP4** and **Instagram → MP4** via Web GUI (50 MB size limit)
+- **YouTube → MP3/MP4** via CLI or Web GUI (choose format)
+- **Facebook → MP4** and **Instagram → MP4** via Web GUI (50 MB size limit)
 
 ## Requirements
 
@@ -47,9 +47,11 @@ Examples:
 # Download YouTube audio as MP3
 python media_grabber.py https://youtu.be/abc123 -f mp3 -o out_audio
 
+# Download YouTube video as MP4
+python media_grabber.py https://youtu.be/abc123 -f mp4 -o out_video
+
 # Download Facebook video as MP4
 python media_grabber.py https://facebook.com/... -f mp4 -o out_video
-
 
 ## Web GUI Usage
 
@@ -69,8 +71,8 @@ python media_grabber_web.py
 
 Open http://localhost:8080 in your browser. Select one of the tabs:
 
-- **YouTube**: extract MP3 audio from a YouTube URL
-- **Facebook**: download MP4 video from a Facebook URL (max. 50 MB)
-- **Instagram**: download MP4 video from an Instagram URL (max. 50 MB)
+- **YouTube**: Download MP3 audio or MP4 video from a YouTube URL (choose format via radio buttons)
+- **Facebook**: download MP4 video from a Facebook URL (max. 50 MB)
+- **Instagram**: download MP4 video from an Instagram URL (max. 50 MB)
 
 Paste your URL in the input box and click **Download**. The requested file will be streamed back automatically.

@@ -41,7 +41,7 @@ def get_metadata():
         return jsonify({'error': str(e)}), 500
 
 
-def do_download(job_id: str, url: str, source: str):
+def do_download(job_id: str, url: str, source: str, format: str = 'mp3'):
     """
     Background download task updating PROGRESS_STATE[job_id].
     """
@@ -58,9 +58,14 @@ def do_download(job_id: str, url: str, source: str):
             state['progress'] = 100
     try:
         if source == 'youtube':
-            download_and_extract_audio(url, Path(tmpdir), progress_hook=hook)
-            pattern = '*.mp3'
-            mimetype = 'audio/mpeg'
+            if format == 'mp3':
+                download_and_extract_audio(url, Path(tmpdir), progress_hook=hook)
+                pattern = '*.mp3'
+                mimetype = 'audio/mpeg'
+            else:  # mp4
+                download_video_file(url, Path(tmpdir), progress_hook=hook)
+                pattern = '*.mp4'
+                mimetype = 'video/mp4'
         else:
             info = YoutubeDL({'quiet': True, 'no_warnings': True, 'noplaylist': True})
             info_dict = info.extract_info(url, download=False)
@@ -96,9 +101,10 @@ def download_start():
     if not url:
         return jsonify({'error': 'The URL is required'}), 400
     source = data.get('source', 'youtube')
+    format = data.get('format', 'mp3')
     job_id = uuid.uuid4().hex
     PROGRESS_STATE[job_id] = {'progress': 0, 'status': 'in_progress'}
-    threading.Thread(target=do_download, args=(job_id, url, source), daemon=True).start()
+    threading.Thread(target=do_download, args=(job_id, url, source, format), daemon=True).start()
     return jsonify({'job_id': job_id})
 
 @app.route('/progress/<job_id>', methods=['GET'])

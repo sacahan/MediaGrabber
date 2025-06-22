@@ -21,6 +21,19 @@
         <label for="url" id="urlLabel" class="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
         <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
       </div>
+      <div id="formatContainer" class="hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-2">下載格式</label>
+        <div class="flex space-x-4">
+          <label class="flex items-center">
+            <input type="radio" id="format-mp3" name="format" value="mp3" checked class="mr-2 text-blue-600 focus:ring-blue-500">
+            <span class="text-sm text-gray-700">MP3 (音訊)</span>
+          </label>
+          <label class="flex items-center">
+            <input type="radio" id="format-mp4" name="format" value="mp4" class="mr-2 text-blue-600 focus:ring-blue-500">
+            <span class="text-sm text-gray-700">MP4 (影片)</span>
+          </label>
+        </div>
+      </div>
       <div id="thumbnailContainer" class="mb-4 flex justify-center hidden">
         <img id="thumbnailPreview" class="max-w-xs rounded shadow" src="" alt="Video Thumbnail">
       </div>
@@ -58,6 +71,7 @@
     var progressContainer = document.getElementById('progressContainer');
     var progressBar = document.getElementById('downloadProgress');
     var progressText = document.getElementById('progressText');
+    var formatContainer = document.getElementById('formatContainer');
 
     Object.keys(tabButtons).forEach(function(key){
       tabButtons[key].addEventListener('click', function(){
@@ -83,6 +97,13 @@
         thumbContainer.classList.add('hidden');
         messageDiv.textContent = '';
         progressContainer.classList.add('hidden');
+        
+        // 顯示/隱藏格式選擇
+        if(key === 'youtube'){
+          formatContainer.classList.remove('hidden');
+        } else {
+          formatContainer.classList.add('hidden');
+        }
       });
     });
 
@@ -162,7 +183,11 @@
       fetch('/download_start', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({url: sendUrl, source: activeTab})
+        body: JSON.stringify({
+          url: sendUrl, 
+          source: activeTab,
+          format: activeTab === 'youtube' ? document.querySelector('input[name="format"]:checked').value : 'mp4'
+        })
       }).then(function(resp){ return resp.json(); }).then(function(data){
         if(data.error){
           messageDiv.textContent = 'Error: ' + data.error;
@@ -206,6 +231,11 @@
       thumbContainer.classList.add('hidden');
       messageDiv.textContent = '';
       progressContainer.classList.add('hidden');
+      
+      // 重置格式選擇為 MP3
+      if(activeTab === 'youtube'){
+        document.getElementById('format-mp3').checked = true;
+      }
     });
   });
   </script>
