@@ -30,6 +30,28 @@ On macOS, install `ffmpeg` via Homebrew:
 brew install ffmpeg
 ```
 
+On Windows, install `ffmpeg` via:
+- **Chocolatey**: `choco install ffmpeg`
+- **Scoop**: `scoop install ffmpeg`
+- **Manual**: Download from [ffmpeg.org](https://ffmpeg.org/download.html#build-windows) and add to PATH
+
+On Linux (Ubuntu/Debian), install `ffmpeg` via:
+
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+On Linux (CentOS/RHEL/Fedora), install `ffmpeg` via:
+
+```bash
+# CentOS/RHEL
+sudo yum install ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
+```
+
 ## Usage (CLI)
 
 Download audio or video from supported platforms via script:
