@@ -15,8 +15,18 @@ from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
 
 
 def _prepare_download(url: str, output_dir: Path):
-    """Prepares for a download by creating the output directory and determining a safe filename."""
+    """Prepares for a download by creating the output directory and determining a safe filename.
+
+    This function extracts the video title and sanitizes it to create a valid
+    and readable filename. It replaces characters that are illegal in common
+    file systems (like <, >, :, ", /, \, |, ?, *) with underscores. To prevent
+    overly long filenames, which can cause issues on some operating systems,
+    the sanitized title is truncated to a maximum of 50 characters.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Configure yt-dlp to only extract metadata without downloading the video.
+    # 'quiet' and 'no_warnings' suppress console output from yt-dlp.
+    # 'noplaylist' ensures only single video info is extracted, ignoring playlist parameters.
     meta_opts = {'quiet': True, 'no_warnings': True, 'noplaylist': True}
     with YoutubeDL(meta_opts) as ydl_meta:
         info = ydl_meta.extract_info(url, download=False)
@@ -30,10 +40,18 @@ def _prepare_download(url: str, output_dir: Path):
 
 
 def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
+    """Download a YouTube video and extract audio as MP3 using yt-dlp and ffmpeg.
+
+    Args:
+        url (str): The URL of the video to download.
+        output_dir (Path): The directory where the audio file will be saved.
+        progress_hook (callable, optional): A callback function to report download progress.
+                                            Used by the web GUI to update progress status.
     """
-    Download a YouTube video and extract audio as MP3 using yt-dlp and ffmpeg.
-    """
+    # Determine the output template for the filename, ensuring it's safe and truncated.
     outtmpl = _prepare_download(url, output_dir)
+    # If no external progress hook is provided (e.g., when running from CLI),
+    # use a default tqdm-based progress bar for console output.
     if progress_hook is None:
         progress = {"pbar": None}
 
@@ -42,18 +60,26 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
             if status == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
+                    # Initialize tqdm progress bar on first download status update.
                     progress["pbar"] = tqdm(
                         total=total, unit="B", unit_scale=True, desc="Downloading"
                     )
+                # Update the progress bar with the difference in downloaded bytes.
                 progress["pbar"].update(d.get("downloaded_bytes", 0) - progress["pbar"].n)
             elif status == "finished":
+                # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
                     progress["pbar"].close()
                 print("Download finished, extracting audio...")
 
     else:
+        # Use the provided external progress hook (e.g., from Flask app).
         hook = progress_hook
 
+    # yt-dlp options for audio extraction.
+    # 'format': 'bestaudio/best' selects the best audio quality.
+    # 'postprocessors' configures FFmpeg to extract audio and convert to MP3.
+    # 'preferredquality': '192' sets the MP3 bitrate to 192kbps.
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": outtmpl,
@@ -75,10 +101,18 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
 
 
 def download_video_file(url: str, output_dir: Path, progress_hook=None):
+    """Download a video (video + audio) and merge into MP4 using yt-dlp and ffmpeg.
+
+    Args:
+        url (str): The URL of the video to download.
+        output_dir (Path): The directory where the video file will be saved.
+        progress_hook (callable, optional): A callback function to report download progress.
+                                            Used by the web GUI to update progress status.
     """
-    Download a video (video + audio) and merge into MP4 using yt-dlp and ffmpeg.
-    """
+    # Determine the output template for the filename, ensuring it's safe and truncated.
     outtmpl = _prepare_download(url, output_dir)
+    # If no external progress hook is provided (e.g., when running from CLI),
+    # use a default tqdm-based progress bar for console output.
     if progress_hook is None:
         progress = {"pbar": None}
 
@@ -87,18 +121,27 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
             if status == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
+                    # Initialize tqdm progress bar on first download status update.
                     progress["pbar"] = tqdm(
                         total=total, unit="B", unit_scale=True, desc="Downloading"
                     )
+                # Update the progress bar with the difference in downloaded bytes.
                 progress["pbar"].update(d.get("downloaded_bytes", 0) - progress["pbar"].n)
             elif status == "finished":
+                # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
                     progress["pbar"].close()
                 print("Download finished, merging video...")
 
     else:
+        # Use the provided external progress hook (e.g., from Flask app).
         hook = progress_hook
 
+    # yt-dlp options for video download and merging.
+    # 'format': 'bestvideo+bestaudio' downloads best quality video and audio separately.
+    # 'merge_output_format': 'mp4' ensures FFmpeg merges them into an MP4 container.
+    # 'postprocessor_args' provides specific FFmpeg arguments for video encoding,
+    # optimizing for compatibility and quality (e.g., H.264 codec, 30fps).
     ydl_opts = {
         "format": "bestvideo+bestaudio",
         "merge_output_format": "mp4",
@@ -123,6 +166,12 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
 
 
 def main():
+    """Main function for the CLI application.
+
+    Parses command-line arguments, sets up the output directory, and calls
+    the appropriate download function based on user's format choice.
+    Includes robust error handling for common yt-dlp issues.
+    """
     parser = argparse.ArgumentParser(
         description="MediaGrabber CLI: download media as MP3 or MP4"
     )
@@ -151,6 +200,7 @@ def main():
             download_video_file(args.url, outdir)
             label = 'MP4'
         print(f"All done! {label} files are in: {outdir.resolve()}")
+    # Catch specific yt-dlp errors to provide user-friendly messages.
     except GeoRestrictedError:
         print("Error: This video is not available in your region.", file=sys.stderr)
         sys.exit(1)
@@ -160,6 +210,7 @@ def main():
     except DownloadError as e:
         print(f"Error: Download failed. {e}", file=sys.stderr)
         sys.exit(1)
+    # Catch any other unexpected errors.
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
@@ -167,3 +218,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

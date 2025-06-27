@@ -140,6 +140,7 @@
     </div>
     <script>
       document.addEventListener("DOMContentLoaded", function () {
+        // Cache DOM elements for better performance and readability.
         var activeTab = "youtube";
         var tabButtons = {
           youtube: document.getElementById("tab-youtube"),
@@ -161,10 +162,15 @@
         var progressBar = document.getElementById("downloadProgress");
         var progressText = document.getElementById("progressText");
         var formatContainer = document.getElementById("formatContainer");
+        var overlayTitle = document.getElementById("overlayTitle");
 
+        // Add event listeners to tab buttons for switching between platforms.
         Object.keys(tabButtons).forEach(function (key) {
           tabButtons[key].addEventListener("click", function () {
+            // Prevent unnecessary updates if the same tab is clicked.
             if (activeTab === key) return;
+
+            // Update active tab styling.
             tabButtons[activeTab].classList.remove(
               "text-blue-600",
               "border-blue-600"
@@ -178,11 +184,18 @@
               "border-transparent"
             );
             tabButtons[key].classList.add("text-blue-600", "border-blue-600");
+
+            // Update ARIA attributes for accessibility.
+            tabButtons[activeTab].setAttribute('aria-selected', 'false');
+            tabButtons[key].setAttribute('aria-selected', 'true');
+
             activeTab = key;
             var name = key.charAt(0).toUpperCase() + key.slice(1);
             var ext = key === "youtube" ? "MP3" : "MP4";
             pageTitle.textContent = name + " to " + ext + " (Web GUI)";
             urlLabel.textContent = name + " URL";
+
+            // Update URL input placeholder based on active tab.
             if (key === "youtube") {
               urlInput.placeholder = "https://www.youtube.com/watch?v=...";
             } else if (key === "facebook") {
@@ -190,11 +203,12 @@
             } else {
               urlInput.placeholder = "https://www.instagram.com/...";
             }
-            urlInput.value = "";
-            titleContainer.classList.add("hidden");
+            urlInput.value = ""; // Clear URL input on tab switch.
+            titleContainer.classList.add("hidden"); // Hide metadata containers.
             thumbContainer.classList.add("hidden");
-            messageDiv.innerHTML = "";
+            messageDiv.innerHTML = ""; // Clear messages.
 
+            // Show/hide format selection based on tab (only YouTube has format options).
             if (key === "youtube") {
               formatContainer.classList.remove("hidden");
             } else {
@@ -204,24 +218,29 @@
         });
 
         function fetchMetadata(url) {
+          // Fetches video metadata (title and thumbnail) from the backend.
           fetch("/metadata", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: url }),
           })
             .then(function (resp) {
+              // Check if the HTTP response was successful.
               if (!resp.ok) {
+                // If not, parse the error message from the response body and reject the promise.
                 return resp.json().then(err => Promise.reject(err));
               }
               return resp.json();
             })
             .then(function (data) {
+              // Display video title if available.
               if (data.title) {
                 titlePreview.textContent = data.title;
                 titleContainer.classList.remove("hidden");
               } else {
                 titleContainer.classList.add("hidden");
               }
+              // Display video thumbnail if available.
               if (data.thumbnail) {
                 thumbImage.src = data.thumbnail;
                 thumbContainer.classList.remove("hidden");
@@ -230,15 +249,18 @@
               }
             })
             .catch(function (error) {
+              // Hide metadata containers on error.
               titleContainer.classList.add("hidden");
               thumbContainer.classList.add("hidden");
             });
         }
 
+        // Event listener for URL input changes to fetch metadata dynamically.
         urlInput.addEventListener("input", function () {
           var val = urlInput.value.trim();
           var cleanUrl = val;
           var showMeta = false;
+          // Validate URL format based on active tab to decide whether to fetch metadata.
           if (activeTab === "youtube") {
             var m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
             if (m) {
@@ -254,31 +276,38 @@
               showMeta = true;
             }
           }
+          // Fetch metadata if URL is valid for the current tab.
           if (showMeta) {
             fetchMetadata(cleanUrl);
           } else {
+            // Hide metadata if URL is not valid or empty.
             titleContainer.classList.add("hidden");
             thumbContainer.classList.add("hidden");
           }
-          messageDiv.innerHTML = "";
+          messageDiv.innerHTML = ""; // Clear previous messages.
         });
 
+        // Event listener for form submission to start the download process.
         form.addEventListener("submit", function (e) {
-          e.preventDefault();
+          e.preventDefault(); // Prevent default form submission.
           var rawUrl = urlInput.value.trim();
-          if (!rawUrl) return;
+          if (!rawUrl) return; // Do nothing if URL is empty.
           var sendUrl = rawUrl;
+          // Clean YouTube URL for consistent backend processing.
           if (activeTab === "youtube") {
             var m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
             if (m2) sendUrl = "https://www.youtube.com/watch?v=" + m2[1];
           }
+          // Disable buttons and show overlay to prevent user interaction during download.
           downloadBtn.disabled = true;
           clearBtn.disabled = true;
           messageDiv.innerHTML = "";
           progressBar.value = 0;
           progressText.textContent = "0%";
+          overlayTitle.textContent = "Downloading..."; // Initial overlay title.
           overlay.classList.remove("hidden");
 
+          // Send download request to the backend.
           fetch("/download_start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -295,23 +324,26 @@
               return resp.json();
             })
             .then(function (data) {
+              // Handle errors returned from the backend.
               if (data.error) {
                 messageDiv.textContent = "Error: " + data.error;
-                overlay.classList.add("hidden");
+                overlay.classList.add("hidden"); // Hide overlay on error.
                 downloadBtn.disabled = false;
                 clearBtn.disabled = false;
                 return;
               }
-              var jobId = data.job_id;
+              var jobId = data.job_id; // Get the unique job ID for polling.
+              // Start polling the progress endpoint at regular intervals.
               var poll = setInterval(function () {
                 fetch("/progress/" + jobId)
                   .then(function (r) {
                     return r.json();
                   })
                   .then(function (statusData) {
+                    // Handle errors during polling.
                     if (statusData.error) {
                       messageDiv.textContent = "Error: " + statusData.error;
-                      clearInterval(poll);
+                      clearInterval(poll); // Stop polling on error.
                       overlay.classList.add("hidden");
                       downloadBtn.disabled = false;
                       clearBtn.disabled = false;
@@ -321,23 +353,25 @@
                     progressBar.value = p;
                     progressText.textContent = p + "%";
 
-                    // Update overlay title based on stage
+                    // Update overlay title based on the current stage of the download process.
                     if (statusData.stage === 'transcoding') {
                       overlayTitle.textContent = "Transcoding...";
                     } else if (statusData.stage === 'downloading') {
                       overlayTitle.textContent = "Downloading...";
                     } else {
-                      overlayTitle.textContent = "Processing..."; // Fallback for other stages
+                      overlayTitle.textContent = "Processing..."; // Fallback for other stages (e.g., queued).
                     }
 
+                    // If download is complete, stop polling, hide overlay, and display download link.
                     if (statusData.status === "done") {
                       clearInterval(poll);
                       overlay.classList.add("hidden");
-                      messageDiv.innerHTML = "";
+                      messageDiv.innerHTML = ""; // Clear previous messages.
                       var downloadLinkContainer = document.createElement('div');
-                      downloadLinkContainer.className = "mt-4";
+                      downloadLinkContainer.className = "mt-4"; // Add margin top for spacing.
                       var link = document.createElement("a");
                       link.href = "/download_file/" + jobId;
+                      // Apply button-like styling for better visibility and user experience.
                       link.className = "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 ease-in-out";
                       link.textContent = "Download File";
                       downloadLinkContainer.appendChild(link);
@@ -349,6 +383,7 @@
               }, 500);
             })
             .catch(function () {
+              // Handle network or unexpected errors during the fetch request.
               messageDiv.textContent = "Download failed.";
               overlay.classList.add("hidden");
               downloadBtn.disabled = false;
@@ -356,12 +391,14 @@
             });
         });
 
+        // Event listener for the clear button to reset the form and UI.
         clearBtn.addEventListener("click", function () {
-          urlInput.value = "";
-          titleContainer.classList.add("hidden");
+          urlInput.value = ""; // Clear URL input.
+          titleContainer.classList.add("hidden"); // Hide metadata containers.
           thumbContainer.classList.add("hidden");
-          messageDiv.innerHTML = "";
+          messageDiv.innerHTML = ""; // Clear messages.
 
+          // Reset format selection to MP3 for YouTube tab.
           if (activeTab === "youtube") {
             document.getElementById("format-mp3").checked = true;
           }
