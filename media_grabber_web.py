@@ -11,8 +11,13 @@ from media_grabber import download_and_extract_audio, download_video_file
 
 from urllib.parse import quote
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
+import logging
 import threading
 import uuid
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # In-memory store for download progress state
 PROGRESS_STATE = {}
@@ -37,6 +42,8 @@ def get_metadata():
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         return jsonify({'title': info.get('title'), 'thumbnail': info.get('thumbnail')})
+    except ExtractorError:
+        return jsonify({'error': 'Could not extract video information. The URL might be invalid or unsupported.'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -47,6 +54,9 @@ def do_download(job_id: str, url: str, source: str, format: str = 'mp3'):
     """
     tmpdir = tempfile.mkdtemp()
     state = PROGRESS_STATE.get(job_id, {})
+    state['stage'] = 'downloading' # Initial stage
+    logging.info(f"[{job_id}] Starting download for {url} (source: {source}, format: {format})")
+
     def hook(d):
         status = d.get('status')
         if status == 'downloading':
@@ -56,6 +66,9 @@ def do_download(job_id: str, url: str, source: str, format: str = 'mp3'):
                 state['progress'] = int(downloaded / total * 100)
         elif status == 'finished':
             state['progress'] = 100
+            state['stage'] = 'transcoding' # Update stage to transcoding
+            logging.info(f"[{job_id}] yt-dlp finished downloading. Starting post-processing.")
+
     try:
         if source == 'youtube':
             if format == 'mp3':
@@ -70,29 +83,48 @@ def do_download(job_id: str, url: str, source: str, format: str = 'mp3'):
             info = YoutubeDL({'quiet': True, 'no_warnings': True, 'noplaylist': True})
             info_dict = info.extract_info(url, download=False)
             size = info_dict.get('filesize') or info_dict.get('filesize_approx', 0)
-            if size and size > 50*1024*1024:
+            if size and size > 50 * 1024 * 1024:
                 shutil.rmtree(tmpdir)
+                logging.warning(f"[{job_id}] Video size ({size} bytes) exceeds 50MB limit.")
                 state.update(status='error', error='Video size exceeds 50MB limit')
                 return
             download_video_file(url, Path(tmpdir), progress_hook=hook)
             pattern = '*.mp4'
             mimetype = 'video/mp4'
+
         files = list(Path(tmpdir).glob(pattern))
         if not files:
             shutil.rmtree(tmpdir)
+            logging.error(f"[{job_id}] Post-processing failed: {pattern} file not found.")
             state.update(status='error', error=f'{pattern} file not found')
             return
+
         file_path = files[0]
+        logging.info(f"[{job_id}] Download successful. File is at {file_path}")
         state.update(
             status='done',
+            stage='completed', # Final stage
             file_path=str(file_path),
             tmpdir=tmpdir,
             filename=file_path.name,
             mimetype=mimetype,
         )
+    except GeoRestrictedError as e:
+        shutil.rmtree(tmpdir)
+        logging.error(f"[{job_id}] Download failed: {e}")
+        state.update(status='error', error='Video is not available in your region.')
+    except ExtractorError as e:
+        shutil.rmtree(tmpdir)
+        logging.error(f"[{job_id}] Download failed: {e}")
+        state.update(status='error', error='Could not extract video information. The URL might be invalid or unsupported.')
+    except DownloadError as e:
+        shutil.rmtree(tmpdir)
+        logging.error(f"[{job_id}] Download failed: {e}")
+        state.update(status='error', error=f'Download failed: {e}')
     except Exception as e:
         shutil.rmtree(tmpdir)
-        state.update(status='error', error=str(e))
+        logging.error(f"[{job_id}] An unexpected error occurred: {e}", exc_info=True)
+        state.update(status='error', error='An unexpected error occurred. Please check the server logs.')
 
 @app.route('/download_start', methods=['POST'])
 def download_start():
@@ -103,7 +135,8 @@ def download_start():
     source = data.get('source', 'youtube')
     format = data.get('format', 'mp3')
     job_id = uuid.uuid4().hex
-    PROGRESS_STATE[job_id] = {'progress': 0, 'status': 'in_progress'}
+    PROGRESS_STATE[job_id] = {'progress': 0, 'status': 'in_progress', 'stage': 'queued'}
+    logging.info(f"[{job_id}] Queuing download for {url}")
     threading.Thread(target=do_download, args=(job_id, url, source, format), daemon=True).start()
     return jsonify({'job_id': job_id})
 
@@ -112,7 +145,7 @@ def download_progress(job_id):
     state = PROGRESS_STATE.get(job_id)
     if not state:
         return jsonify({'error': 'Job not found'}), 404
-    resp = {'progress': state.get('progress', 0), 'status': state.get('status')}
+    resp = {'progress': state.get('progress', 0), 'status': state.get('status'), 'stage': state.get('stage', 'unknown')}
     if state.get('status') == 'error':
         resp['error'] = state.get('error')
     return jsonify(resp)

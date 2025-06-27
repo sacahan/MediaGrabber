@@ -1,243 +1,365 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MediaGrabber Web GUI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="container mx-auto p-6">
-    <h1 id="pageTitle" class="text-3xl font-bold mb-6">MediaGrabber Web GUI</h1>
-    <div class="mb-4 border-b border-gray-200">
-      <nav class="flex space-x-4">
-        <button type="button" id="tab-youtube" class="px-3 py-2 font-medium text-blue-600 border-b-2 border-blue-600">YouTube</button>
-        <button type="button" id="tab-facebook" class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300">Facebook</button>
-        <button type="button" id="tab-instagram" class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300">Instagram</button>
-      </nav>
-    </div>
-    <form id="downloadForm" class="space-y-4">
-      <div>
-        <label for="url" id="urlLabel" class="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
-        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-      </div>
-      <div id="formatContainer">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Download Format</label>
-        <div class="flex space-x-4">
-          <label class="flex items-center">
-            <input type="radio" id="format-mp3" name="format" value="mp3" checked class="mr-2 text-blue-600 focus:ring-blue-500">
-            <span class="text-sm text-gray-700">MP3 (Sound)</span>
-          </label>
-          <label class="flex items-center">
-            <input type="radio" id="format-mp4" name="format" value="mp4" class="mr-2 text-blue-600 focus:ring-blue-500">
-            <span class="text-sm text-gray-700">MP4 (Video)</span>
-          </label>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MediaGrabber Web GUI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* No custom styles for #overlay needed, using Tailwind classes directly */
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div id="overlay" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
+      <div class="w-1/2 bg-white p-8 rounded-lg shadow-lg text-center">
+        <h2 id="overlayTitle" class="text-2xl font-bold mb-4">Downloading...</h2>
+        <div class="w-full">
+          <progress
+            id="downloadProgress"
+            class="w-full"
+            value="0"
+            max="100"
+          ></progress>
+          <div id="progressText" class="mt-1 text-sm text-gray-600">0%</div>
         </div>
       </div>
-      <div id="thumbnailContainer" class="mb-4 flex justify-center hidden">
-        <img id="thumbnailPreview" class="max-w-xs rounded shadow" src="" alt="Video Thumbnail">
-      </div>
-      <div id="titleContainer" class="mb-4 text-center hidden">
-        <h2 id="titlePreview" class="text-xl font-semibold text-gray-800"></h2>
-      </div>
-      <button type="submit" id="downloadBtn" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Download</button>
-      <button type="button" id="clearBtn" class="ml-2 inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Clear</button>
-    </form>
-    <div id="message" class="mt-4 text-gray-700"></div>
-    <div id="progressContainer" class="mt-4 hidden">
-      <progress id="downloadProgress" class="w-full" value="0" max="0"></progress>
-      <div id="progressText" class="mt-1 text-sm text-gray-600"></div>
     </div>
-  </div>
-  <script>
-  document.addEventListener('DOMContentLoaded', function(){
-    var activeTab = 'youtube';
-    var tabButtons = {
-      youtube: document.getElementById('tab-youtube'),
-      facebook: document.getElementById('tab-facebook'),
-      instagram: document.getElementById('tab-instagram')
-    };
-    var pageTitle = document.getElementById('pageTitle');
-    var urlLabel = document.getElementById('urlLabel');
-    var urlInput = document.getElementById('url');
-    var thumbContainer = document.getElementById('thumbnailContainer');
-    var thumbImage = document.getElementById('thumbnailPreview');
-    var form = document.getElementById('downloadForm');
-    var downloadBtn = document.getElementById('downloadBtn');
-    var titleContainer = document.getElementById('titleContainer');
-    var titlePreview = document.getElementById('titlePreview');
-    var messageDiv = document.getElementById('message');
-    var clearBtn = document.getElementById('clearBtn');
-    var progressContainer = document.getElementById('progressContainer');
-    var progressBar = document.getElementById('downloadProgress');
-    var progressText = document.getElementById('progressText');
-    var formatContainer = document.getElementById('formatContainer');
+    <div class="container mx-auto p-6">
+      <h1 id="pageTitle" class="text-3xl font-bold mb-6">
+        MediaGrabber Web GUI
+      </h1>
+      <div class="mb-4 border-b border-gray-200">
+        <nav class="flex space-x-4">
+          <button
+            type="button"
+            id="tab-youtube"
+            class="px-3 py-2 font-medium text-blue-600 border-b-2 border-blue-600"
+          >
+            YouTube
+          </button>
+          <button
+            type="button"
+            id="tab-facebook"
+            class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300"
+          >
+            Facebook
+          </button>
+          <button
+            type="button"
+            id="tab-instagram"
+            class="px-3 py-2 font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 hover:border-gray-300"
+          >
+            Instagram
+          </button>
+        </nav>
+      </div>
+      <form id="downloadForm" class="space-y-4">
+        <div>
+          <label
+            for="url"
+            id="urlLabel"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >YouTube URL</label
+          >
+          <input
+            type="text"
+            id="url"
+            name="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            required
+            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div id="formatContainer">
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Download Format</label
+          >
+          <div class="flex space-x-4">
+            <label class="flex items-center">
+              <input
+                type="radio"
+                id="format-mp3"
+                name="format"
+                value="mp3"
+                checked
+                class="mr-2 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700">MP3 (Sound)</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                id="format-mp4"
+                name="format"
+                value="mp4"
+                class="mr-2 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700">MP4 (Video)</span>
+            </label>
+          </div>
+        </div>
+        <div id="thumbnailContainer" class="mb-4 flex justify-center hidden">
+          <img
+            id="thumbnailPreview"
+            class="max-w-xs rounded shadow"
+            src=""
+            alt="Video Thumbnail"
+          />
+        </div>
+        <div id="titleContainer" class="mb-4 text-center hidden">
+          <h2
+            id="titlePreview"
+            class="text-xl font-semibold text-gray-800"
+          ></h2>
+        </div>
+        <button
+          type="submit"
+          id="downloadBtn"
+          class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Download
+        </button>
+        <button
+          type="button"
+          id="clearBtn"
+          class="ml-2 inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+        >
+          Clear
+        </button>
+      </form>
+      <div id="message" class="mt-4 text-gray-700"></div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var activeTab = "youtube";
+        var tabButtons = {
+          youtube: document.getElementById("tab-youtube"),
+          facebook: document.getElementById("tab-facebook"),
+          instagram: document.getElementById("tab-instagram"),
+        };
+        var pageTitle = document.getElementById("pageTitle");
+        var urlLabel = document.getElementById("urlLabel");
+        var urlInput = document.getElementById("url");
+        var thumbContainer = document.getElementById("thumbnailContainer");
+        var thumbImage = document.getElementById("thumbnailPreview");
+        var form = document.getElementById("downloadForm");
+        var downloadBtn = document.getElementById("downloadBtn");
+        var titleContainer = document.getElementById("titleContainer");
+        var titlePreview = document.getElementById("titlePreview");
+        var messageDiv = document.getElementById("message");
+        var clearBtn = document.getElementById("clearBtn");
+        var overlay = document.getElementById("overlay");
+        var progressBar = document.getElementById("downloadProgress");
+        var progressText = document.getElementById("progressText");
+        var formatContainer = document.getElementById("formatContainer");
 
-    Object.keys(tabButtons).forEach(function(key){
-      tabButtons[key].addEventListener('click', function(){
-        if(activeTab === key) return;
-        tabButtons[activeTab].classList.remove('text-blue-600','border-blue-600');
-        tabButtons[activeTab].classList.add('text-gray-600','border-transparent');
-        tabButtons[key].classList.remove('text-gray-600','border-transparent');
-        tabButtons[key].classList.add('text-blue-600','border-blue-600');
-        activeTab = key;
-        var name = key.charAt(0).toUpperCase() + key.slice(1);
-        var ext = (key === 'youtube' ? 'MP3' : 'MP4');
-        pageTitle.textContent = name + ' to ' + ext + ' (Web GUI)';
-        urlLabel.textContent = name + ' URL';
-        if(key === 'youtube'){
-          urlInput.placeholder = 'https://www.youtube.com/watch?v=...';
-        } else if(key === 'facebook'){
-          urlInput.placeholder = 'https://www.facebook.com/...';
-        } else {
-          urlInput.placeholder = 'https://www.instagram.com/...';
-        }
-        urlInput.value = '';
-        titleContainer.classList.add('hidden');
-        thumbContainer.classList.add('hidden');
-        messageDiv.textContent = '';
-        progressContainer.classList.add('hidden');
-        
-        // 顯示/隱藏格式選擇
-        if(key === 'youtube'){
-          formatContainer.classList.remove('hidden');
-        } else {
-          formatContainer.classList.add('hidden');
-        }
-      });
-    });
-
-    function fetchMetadata(url){
-      fetch('/metadata', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({url: url})
-      }).then(function(resp){ return resp.json(); })
-        .then(function(data){
-          if(data.title){
-            titlePreview.textContent = data.title;
-            titleContainer.classList.remove('hidden');
-          } else {
-            titleContainer.classList.add('hidden');
-          }
-          if(data.thumbnail){
-            thumbImage.src = data.thumbnail;
-            thumbContainer.classList.remove('hidden');
-          } else {
-            thumbContainer.classList.add('hidden');
-          }
-        }).catch(function(){
-          titleContainer.classList.add('hidden');
-          thumbContainer.classList.add('hidden');
-        });
-    }
-
-    urlInput.addEventListener('input', function(){
-      var val = urlInput.value.trim();
-      var cleanUrl = val;
-      var showMeta = false;
-      if(activeTab === 'youtube'){
-        var m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-        if(m){
-          cleanUrl = 'https://www.youtube.com/watch?v=' + m[1];
-          showMeta = true;
-        }
-      } else if(activeTab === 'facebook'){
-        if(val.includes('facebook.com') || val.includes('fb.watch')){
-          showMeta = true;
-        }
-      } else if(activeTab === 'instagram'){
-        if(val.includes('instagram.com')){
-          showMeta = true;
-        }
-      }
-      if(showMeta){
-        fetchMetadata(cleanUrl);
-      } else {
-        titleContainer.classList.add('hidden');
-        thumbContainer.classList.add('hidden');
-      }
-      messageDiv.textContent = '';
-      progressContainer.classList.add('hidden');
-      progressBar.value = 0;
-      progressBar.max = 0;
-      progressText.textContent = '';
-    });
-
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      var rawUrl = urlInput.value.trim();
-      if(!rawUrl) return;
-      var sendUrl = rawUrl;
-      if(activeTab === 'youtube'){
-        var m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-        if(m2) sendUrl = 'https://www.youtube.com/watch?v=' + m2[1];
-      }
-      downloadBtn.disabled = true;
-      messageDiv.textContent = '';
-      progressBar.value = 0;
-      progressBar.max = 100;
-      progressText.textContent = '';
-      progressContainer.classList.remove('hidden');
-
-      fetch('/download_start', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          url: sendUrl, 
-          source: activeTab,
-          format: activeTab === 'youtube' ? document.querySelector('input[name="format"]:checked').value : 'mp4'
-        })
-      }).then(function(resp){ return resp.json(); }).then(function(data){
-        if(data.error){
-          messageDiv.textContent = 'Error: ' + data.error;
-          downloadBtn.disabled = false;
-          return;
-        }
-        var jobId = data.job_id;
-        var poll = setInterval(function(){
-          fetch('/progress/' + jobId).then(function(r){ return r.json(); }).then(function(statusData){
-            if(statusData.error){
-              messageDiv.textContent = 'Error: ' + statusData.error;
-              clearInterval(poll);
-              downloadBtn.disabled = false;
-              return;
+        Object.keys(tabButtons).forEach(function (key) {
+          tabButtons[key].addEventListener("click", function () {
+            if (activeTab === key) return;
+            tabButtons[activeTab].classList.remove(
+              "text-blue-600",
+              "border-blue-600"
+            );
+            tabButtons[activeTab].classList.add(
+              "text-gray-600",
+              "border-transparent"
+            );
+            tabButtons[key].classList.remove(
+              "text-gray-600",
+              "border-transparent"
+            );
+            tabButtons[key].classList.add("text-blue-600", "border-blue-600");
+            activeTab = key;
+            var name = key.charAt(0).toUpperCase() + key.slice(1);
+            var ext = key === "youtube" ? "MP3" : "MP4";
+            pageTitle.textContent = name + " to " + ext + " (Web GUI)";
+            urlLabel.textContent = name + " URL";
+            if (key === "youtube") {
+              urlInput.placeholder = "https://www.youtube.com/watch?v=...";
+            } else if (key === "facebook") {
+              urlInput.placeholder = "https://www.facebook.com/...";
+            } else {
+              urlInput.placeholder = "https://www.instagram.com/...";
             }
-            var p = statusData.progress || 0;
-            progressBar.value = p;
-            progressText.textContent = p + '%';
-            if(statusData.status === 'done'){
-              clearInterval(poll);
-              var link = document.createElement('a');
-              link.href = '/download_file/' + jobId;
-              link.download = '';
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-              messageDiv.textContent = 'Download completed.';
-              downloadBtn.disabled = false;
+            urlInput.value = "";
+            titleContainer.classList.add("hidden");
+            thumbContainer.classList.add("hidden");
+            messageDiv.innerHTML = "";
+
+            if (key === "youtube") {
+              formatContainer.classList.remove("hidden");
+            } else {
+              formatContainer.classList.add("hidden");
             }
           });
-        }, 500);
-      }).catch(function(){
-        messageDiv.textContent = 'Download failed.';
-        downloadBtn.disabled = false;
-      });
-    });
+        });
 
-    clearBtn.addEventListener('click', function(){
-      urlInput.value = '';
-      titleContainer.classList.add('hidden');
-      thumbContainer.classList.add('hidden');
-      messageDiv.textContent = '';
-      progressContainer.classList.add('hidden');
-      
-      // 重置格式選擇為 MP3
-      if(activeTab === 'youtube'){
-        document.getElementById('format-mp3').checked = true;
-      }
-    });
-  });
-  </script>
-</body>
+        function fetchMetadata(url) {
+          console.log('Fetching metadata for URL:', url);
+          fetch("/metadata", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url }),
+          })
+            .then(function (resp) {
+              if (!resp.ok) {
+                console.error('HTTP error! status:', resp.status);
+                return resp.json().then(err => Promise.reject(err));
+              }
+              return resp.json();
+            })
+            .then(function (data) {
+              console.log('Metadata received:', data);
+              if (data.title) {
+                titlePreview.textContent = data.title;
+                titleContainer.classList.remove("hidden");
+              } else {
+                titleContainer.classList.add("hidden");
+              }
+              if (data.thumbnail) {
+                thumbImage.src = data.thumbnail;
+                thumbContainer.classList.remove("hidden");
+              } else {
+                thumbContainer.classList.add("hidden");
+              }
+            })
+            .catch(function (error) {
+              console.error('Error fetching metadata:', error);
+              titleContainer.classList.add("hidden");
+              thumbContainer.classList.add("hidden");
+            });
+        }
+
+        urlInput.addEventListener("input", function () {
+          var val = urlInput.value.trim();
+          var cleanUrl = val;
+          var showMeta = false;
+          if (activeTab === "youtube") {
+            var m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+            if (m) {
+              cleanUrl = "https://www.youtube.com/watch?v=" + m[1];
+              showMeta = true;
+            }
+          } else if (activeTab === "facebook") {
+            if (val.includes("facebook.com") || val.includes("fb.watch")) {
+              showMeta = true;
+            }
+          } else if (activeTab === "instagram") {
+            if (val.includes("instagram.com")) {
+              showMeta = true;
+            }
+          }
+          if (showMeta) {
+            fetchMetadata(cleanUrl);
+          } else {
+            titleContainer.classList.add("hidden");
+            thumbContainer.classList.add("hidden");
+          }
+          messageDiv.innerHTML = "";
+        });
+
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var rawUrl = urlInput.value.trim();
+          if (!rawUrl) return;
+          var sendUrl = rawUrl;
+          if (activeTab === "youtube") {
+            var m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+            if (m2) sendUrl = "https://www.youtube.com/watch?v=" + m2[1];
+          }
+          downloadBtn.disabled = true;
+          clearBtn.disabled = true;
+          messageDiv.innerHTML = "";
+          progressBar.value = 0;
+          progressText.textContent = "0%";
+          overlay.classList.remove("hidden");
+
+          fetch("/download_start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: sendUrl,
+              source: activeTab,
+              format:
+                activeTab === "youtube"
+                  ? document.querySelector('input[name="format"]:checked').value
+                  : "mp4",
+            }),
+          })
+            .then(function (resp) {
+              return resp.json();
+            })
+            .then(function (data) {
+              if (data.error) {
+                messageDiv.textContent = "Error: " + data.error;
+                overlay.classList.add("hidden");
+                downloadBtn.disabled = false;
+                clearBtn.disabled = false;
+                return;
+              }
+              var jobId = data.job_id;
+              var poll = setInterval(function () {
+                fetch("/progress/" + jobId)
+                  .then(function (r) {
+                    return r.json();
+                  })
+                  .then(function (statusData) {
+                    if (statusData.error) {
+                      messageDiv.textContent = "Error: " + statusData.error;
+                      clearInterval(poll);
+                      overlay.classList.add("hidden");
+                      downloadBtn.disabled = false;
+                      clearBtn.disabled = false;
+                      return;
+                    }
+                    var p = statusData.progress || 0;
+                    progressBar.value = p;
+                    progressText.textContent = p + "%";
+
+                    // Update overlay title based on stage
+                    if (statusData.stage === 'transcoding') {
+                      overlayTitle.textContent = "Transcoding...";
+                    } else if (statusData.stage === 'downloading') {
+                      overlayTitle.textContent = "Downloading...";
+                    } else {
+                      overlayTitle.textContent = "Processing..."; // Fallback for other stages
+                    }
+
+                    if (statusData.status === "done") {
+                      clearInterval(poll);
+                      overlay.classList.add("hidden");
+                      var link = document.createElement("a");
+                      link.href = "/download_file/" + jobId;
+                      link.className = "text-blue-600 hover:underline";
+                      link.textContent =
+                        "Download completed. Click here to download again.";
+                      messageDiv.innerHTML = "";
+                      messageDiv.appendChild(link);
+                      downloadBtn.disabled = false;
+                      clearBtn.disabled = false;
+                    }
+                  });
+              }, 500);
+            })
+            .catch(function () {
+              messageDiv.textContent = "Download failed.";
+              overlay.classList.add("hidden");
+              downloadBtn.disabled = false;
+              clearBtn.disabled = false;
+            });
+        });
+
+        clearBtn.addEventListener("click", function () {
+          urlInput.value = "";
+          titleContainer.classList.add("hidden");
+          thumbContainer.classList.add("hidden");
+          messageDiv.innerHTML = "";
+
+          if (activeTab === "youtube") {
+            document.getElementById("format-mp3").checked = true;
+          }
+        });
+      });
+    </script>
+  </body>
 </html>
