@@ -4,6 +4,10 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 import tempfile
 import shutil
+import sys
+
+# Add the parent directory to the Python path to allow importing media_grabber
+sys.path.insert(0, str(Path(__file__).parent))
 
 from media_grabber import download_and_extract_audio, download_video_file, _prepare_download
 

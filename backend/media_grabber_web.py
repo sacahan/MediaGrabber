@@ -5,7 +5,8 @@ MediaGrabber Web GUI using Flask (YouTube MP3, Facebook/Instagram MP4).
 
 from pathlib import Path
 import tempfile, shutil
-from flask import Flask, render_template, request, Response, stream_with_context, jsonify
+from flask import Flask, request, Response, stream_with_context, jsonify
+from flask_cors import CORS # Import Flask-CORS
 
 from media_grabber import download_and_extract_audio, download_video_file
 
@@ -13,26 +14,36 @@ from urllib.parse import quote
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
 import logging
+from logging.handlers import RotatingFileHandler
 import threading
 import uuid
 
+# Ensure the log directory exists
+log_dir = Path(__file__).parent / "log"
+log_dir.mkdir(parents=True, exist_ok=True)
+
 # Configure logging for the web application.
 # This helps in debugging and monitoring the server's activity.
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# In-memory store for download progress state.
-# This dictionary holds the current status, progress, and stage for each download job,
-# identified by a unique job_id. It's a simple way to manage state across HTTP requests
-# for asynchronous operations.
-PROGRESS_STATE = {}
+log_file = log_dir / "flask.log"
+handler = RotatingFileHandler(log_file, maxBytes=10000, backupCount=1)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
+app.logger.addHandler(handler)
+CORS(app) # Enable CORS for all routes. This is crucial for frontend-backend separation.
+
+# Dictionary to store the progress and status of each download job.
+# Key: job_id (string), Value: dictionary containing 'progress', 'status', 'stage', etc.
+PROGRESS_STATE = {}
 
 
-@app.route('/', methods=['GET'])
-def index():
-    """Renders the main HTML page for the web GUI."""
-    return render_template('index.html')
+# Removed the / route as it will be handled by the Svelte frontend.
+# @app.route('/', methods=['GET'])
+# def index():
+#     """Renders the main HTML page for the web GUI."""
+#     return render_template('index.html')
 
 
 @app.route('/metadata', methods=['POST'])

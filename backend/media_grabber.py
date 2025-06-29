@@ -186,8 +186,8 @@ def main():
     )
     parser.add_argument(
         "-o", "--output",
-        default="output",
-        help="Output directory (default: ./output)",
+        default="../output", # Changed default output to a common 'output' directory outside backend
+        help="Output directory (default: ../output)",
     )
     args = parser.parse_args()
 

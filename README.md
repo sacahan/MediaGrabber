@@ -4,9 +4,38 @@ A simple Python downloader:
 - **YouTube → MP3/MP4** via CLI or Web GUI (choose format)
 - **Facebook → MP4** and **Instagram → MP4** via Web GUI (50 MB size limit)
 
+## Project Structure
+
+```
+MediaGrabber/
+├── backend/             # Flask REST API and Python core logic
+│   ├── media_grabber.py
+│   ├── media_grabber_web.py
+│   ├── requirements.txt
+│   ├── .venv/           # Python virtual environment
+│   ├── __pycache__/
+│   └── log/             # Flask application logs
+├── frontend/            # Svelte Single Page Application (SPA)
+│   ├── node_modules/
+│   ├── public/
+│   ├── src/
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── svelte.config.js
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── output/              # Default directory for downloaded media files
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
 ## Requirements
 
 - Python 3.7 or newer
+- Node.js (LTS recommended) and npm
 - `ffmpeg` installed and available in PATH
 - On macOS, to suppress Tk deprecation warning set:
   ```bash
@@ -15,14 +44,32 @@ A simple Python downloader:
 
 ## Installation
 
+### Backend Installation
+
+Navigate to the `backend` directory and install Python dependencies:
+
 ```bash
+cd backend
 python3 -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 # upgrade pip and wheel for best compatibility
 pip install --upgrade pip wheel
 # install dependencies
 pip install -r requirements.txt
+cd .. # Go back to project root
 ```
+
+### Frontend Installation
+
+Navigate to the `frontend` directory and install Node.js dependencies:
+
+```bash
+cd frontend
+npm install
+cd .. # Go back to project root
+```
+
+### FFmpeg Installation
 
 On macOS, install `ffmpeg` via Homebrew:
 
@@ -52,49 +99,58 @@ sudo yum install ffmpeg
 sudo dnf install ffmpeg
 ```
 
-## Usage (CLI)
+## Usage
+
+### Backend API (Flask)
+
+Navigate to the `backend` directory and run the Flask application:
+
+```bash
+cd backend
+source .venv/bin/activate # Activate virtual environment
+python media_grabber_web.py
+```
+
+The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`.
+
+### Frontend (Svelte)
+
+Navigate to the `frontend` directory and start the Svelte development server:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI.
+
+### CLI Usage
 
 Download audio or video from supported platforms via script:
 
 ```bash
+cd backend
+source .venv/bin/activate # Activate virtual environment
 python media_grabber.py <URL> [-f FORMAT] [-o OUTPUT_DIR]
 ```
 
 Options:
 - `-f, --format`: `mp3` (audio) or `mp4` (video). Default: `mp3`.
-- `-o, --output`: Output directory (default: `./output`).
+- `-o, --output`: Output directory (default: `../output`).
 
 Examples:
 
-# Download YouTube audio as MP3
-python media_grabber.py https://youtu.be/abc123 -f mp3 -o out_audio
+# Download YouTube audio as MP3 to the project's root output directory
+cd backend
+source .venv/bin/activate
+python media_grabber.py https://youtu.be/abc123 -f mp3 -o ../output
 
-# Download YouTube video as MP4
-python media_grabber.py https://youtu.be/abc123 -f mp4 -o out_video
+# Download YouTube video as MP4 to a custom directory
+cd backend
+source .venv/bin/activate
+python media_grabber.py https://youtu.be/abc123 -f mp4 -o /path/to/your/videos
 
 # Download Facebook video as MP4
-python media_grabber.py https://facebook.com/... -f mp4 -o out_video
-
-## Web GUI Usage
-
-A web-based interface with tabbed support for YouTube, Facebook and Instagram:
-
-Ensure dependencies are installed (see Installation):
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the server:
-
-```bash
-python media_grabber_web.py
-```
-
-Open http://localhost:8080 in your browser. Select one of the tabs:
-
-- **YouTube**: Download MP3 audio or MP4 video from a YouTube URL (choose format via radio buttons)
-- **Facebook**: download MP4 video from a Facebook URL (max. 50 MB)
-- **Instagram**: download MP4 video from an Instagram URL (max. 50 MB)
-
-Paste your URL in the input box and click **Download**. The requested file will be streamed back automatically.
+cd backend
+source .venv/bin/activate
+python media_grabber.py https://facebook.com/... -f mp4
