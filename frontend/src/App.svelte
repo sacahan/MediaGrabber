@@ -329,7 +329,7 @@
               {#if activeTab === "youtube"}
                 <div>
                   <p class="block text-lg font-medium text-gray-700 mb-2">Download Format</p>
-                  <div class="flex items-center space-x-4">
+                  <div class="flex items-center space-x-4 justify-center">
                     <label for="format-mp3" class="inline-flex items-center cursor-pointer">
                       <input
                         type="radio"
@@ -365,7 +365,7 @@
                 <h2 class="text-2xl font-semibold text-gray-800 text-center mb-4">{title}</h2>
               {/if}
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-2 gap-4 flex justify-center">
                 <button
                   type="submit"
                   class="{buttonClasses.primary} {downloadBtnDisabled ? buttonClasses.disabled : ''}"
