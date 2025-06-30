@@ -15,7 +15,7 @@ MediaGrabber/
 │   ├── .venv/           # Python virtual environment
 │   ├── __pycache__/
 │   └── log/             # Flask application logs
-├── frontend/            # Svelte Single Page Application (SPA)
+├── frontend/            # Svelte Single Page Application (SPA) with Tailwind CSS
 │   ├── node_modules/
 │   ├── public/
 │   ├── src/
@@ -24,7 +24,7 @@ MediaGrabber/
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── svelte.config.js
-│   ├── tailwind.config.js
+│   ├── tailwind.config.js # Tailwind CSS configuration
 │   └── vite.config.js
 ├── output/              # Default directory for downloaded media files
 ├── .gitignore
@@ -113,7 +113,7 @@ python media_grabber_web.py
 
 The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`.
 
-### Frontend (Svelte)
+### Frontend (Svelte with Tailwind CSS)
 
 Navigate to the `frontend` directory and start the Svelte development server:
 
@@ -122,7 +122,7 @@ cd frontend
 npm run dev
 ```
 
-The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI.
+The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI. The platform buttons (YouTube, Facebook, Instagram) now include icons for better visual identification.
 
 ### CLI Usage
 

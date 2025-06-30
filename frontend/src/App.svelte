@@ -1,7 +1,5 @@
 <script>
   // Svelte 響應式狀態定義
-  // 使用 `let` 關鍵字聲明的變數在 Svelte 中是響應式的。
-  // 當這些變數的值改變時，Svelte 會自動更新 DOM 中所有使用到它們的地方。
   let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
   let url = ""; // URL 輸入框的值
   let title = ""; // 影片標題
@@ -14,25 +12,41 @@
   let clearBtnDisabled = false; // 控制清除按鈕是否禁用
   let selectedFormat = "mp3"; // YouTube 下載格式 (mp3/mp4)
 
-  // API 後端 URL。確保這裡的 URL 與您的 Flask 後端運行地址一致。
+  // API 後端 URL。
   const API_BASE_URL = "http://localhost:8080";
 
   // 響應式變數，用於 URL 輸入框的 placeholder。
-  // Svelte 會自動追蹤 activeTab 的變化來更新這個變數。
   let urlInputPlaceholder = "https://www.youtube.com/watch?v=...";
+
+  // Tailwind CSS 樣式類別定義 (這些類別現在應該由 CDN 提供)
+  let activeTabClasses = {
+    active: "bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
+    inactive: "bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out"
+  };
+
+  let buttonClasses = {
+    primary: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300",
+    secondary: "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg w-full transition duration-300",
+    disabled: "opacity-50 cursor-not-allowed"
+  };
+
+  let messageClasses = {
+    success: "bg-green-100 text-green-800 border border-green-300 p-4 rounded-md",
+    error: "bg-red-100 text-red-800 border border-red-300 p-4 rounded-md",
+    default: "bg-gray-100 text-gray-800 border border-gray-300 p-4 rounded-md"
+  };
+
+  // 根據下載狀態動態設置 message 的 class
+  $: currentMessageClasses = message.includes("Error") ? messageClasses.error : (message.includes("Download File") ? messageClasses.success : messageClasses.default);
 
   /**
    * 處理分頁切換的邏輯。
    * @param {string} tabKey - 被點擊的分頁鍵 (e.g., 'youtube', 'facebook', 'instagram').
    */
   function handleTabClick(tabKey) {
-    // 如果點擊的是當前已激活的分頁，則不做任何操作。
     if (activeTab === tabKey) return;
 
-    // 更新 activeTab 狀態，Svelte 會自動更新相關的 class。
     activeTab = tabKey;
-
-    // 重置表單和訊息狀態，為新分頁做準備。
     url = "";
     title = "";
     thumbnail = "";
@@ -40,7 +54,6 @@
     downloadProgress = 0;
     overlayVisible = false;
 
-    // 根據新的 activeTab 更新 URL 輸入框的 placeholder 和預設下載格式。
     if (tabKey === "youtube") {
       urlInputPlaceholder = "https://www.youtube.com/watch?v=...";
       selectedFormat = "mp3"; // YouTube 預設 MP3
@@ -53,7 +66,7 @@
     }
   }
 
-  // 防抖函數：延遲執行一個函數，直到它在指定的時間內沒有被再次調用。
+  // 防抖函數
   function debounce(func, delay) {
     let timeout;
     return function (...args) {
@@ -64,11 +77,9 @@
   }
 
   /**
-   * 處理 URL 輸入框的輸入事件，用於獲取影片的 metadata (標題和縮圖)。
-   * 該函數是異步的，因為它會發送網絡請求。
+   * 處理 URL 輸入框的輸入事件，用於獲取影片的 metadata。
    */
   async function handleUrlInputLogic() {
-    // 清空之前的訊息和 metadata 顯示。
     message = "";
     title = "";
     thumbnail = "";
@@ -77,8 +88,6 @@
     let cleanUrl = val;
     let showMeta = false;
 
-    // 根據當前選中的分頁，驗證 URL 格式並提取乾淨的 URL。
-    // 只有當 URL 格式有效時，才嘗試獲取 metadata。
     if (activeTab === "youtube") {
       const m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
       if (m) {
@@ -97,84 +106,70 @@
 
     if (showMeta) {
       try {
-        // 向後端 /metadata API 發送 POST 請求。
         const response = await fetch(`${API_BASE_URL}/metadata`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: cleanUrl }),
         });
 
-        // 檢查 HTTP 響應是否成功 (狀態碼 2xx)。
         if (!response.ok) {
-          // 如果響應不成功，嘗試解析錯誤訊息並拋出異常。
           const errorData = await response.json();
           throw new Error(errorData.error || "Failed to fetch metadata.");
         }
 
-        // 解析 JSON 響應。
         const data = await response.json();
-        // 更新 Svelte 狀態變數，Svelte 會自動更新 DOM。
         title = data.title || "";
         thumbnail = data.thumbnail || "";
       } catch (error) {
-        // 捕獲網絡錯誤或後端返回的錯誤。
         console.error("Error fetching metadata:", error);
         message = `Error fetching metadata: ${error.message}`;
-        title = ""; // 清空標題和縮圖，因為獲取失敗。
+        title = "";
         thumbnail = "";
       }
     }
   }
 
-  // 將 handleUrlInputLogic 包裝在防抖函數中，並將其賦值給 handleUrlInput
   const handleUrlInput = debounce(handleUrlInputLogic, 500);
 
   /**
-   * 處理下載按鈕點擊事件，啟動下載流程。
-   * 該函數是異步的，因為它會發送網絡請求並輪詢進度。
+   * 處理下載按鈕點擊事件。
    */
   async function handleDownload() {
     const rawUrl = url.trim();
-    if (!rawUrl) return; // 如果 URL 為空，則不做任何操作。
+    if (!rawUrl) return;
 
     let sendUrl = rawUrl;
-    // 對 YouTube URL 進行清理，確保格式一致。
     if (activeTab === "youtube") {
       const m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
       if (m2) sendUrl = "https://www.youtube.com/watch?v=" + m2[1];
     }
 
-    // 禁用按鈕並顯示遮罩，防止使用者在下載過程中進行其他操作。
     downloadBtnDisabled = true;
     clearBtnDisabled = true;
-    message = ""; // 清空之前的訊息。
-    downloadProgress = 0; // 重置進度條。
-    overlayTitle = "Downloading..."; // 設置遮罩初始標題。
-    overlayVisible = true; // 顯示遮罩。
+    message = "";
+    downloadProgress = 0;
+    overlayTitle = "Downloading...";
+    overlayVisible = true;
 
     try {
-      // 向後端 /download_start API 發送 POST 請求，啟動下載任務。
       const response = await fetch(`${API_BASE_URL}/download_start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: sendUrl,
           source: activeTab,
-          format: selectedFormat, // 使用 Svelte 綁定的 selectedFormat
+          format: selectedFormat,
         }),
       });
 
-      // 檢查 HTTP 響應是否成功。
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to start download.");
       }
 
-      // 解析響應，獲取 job_id。
       const data = await response.json();
       const jobId = data.job_id;
 
-      // 每 500 毫秒輪詢後端 /progress API，獲取下載進度。
       const pollInterval = setInterval(async () => {
         try {
           const statusResponse = await fetch(
@@ -186,66 +181,54 @@
           }
           const statusData = await statusResponse.json();
 
-          // 如果後端返回錯誤，則顯示錯誤訊息並停止輪詢。
           if (statusData.error) {
             message = `Error: ${statusData.error}`;
             clearInterval(pollInterval);
-            overlayVisible = false; // 隱藏遮罩。
-            downloadBtnDisabled = false; // 啟用按鈕。
+            overlayVisible = false;
+            downloadBtnDisabled = false;
             clearBtnDisabled = false;
             return;
           }
 
-          // 更新進度條的值。
           downloadProgress = statusData.progress || 0;
 
-          // 根據後端回報的 'stage' 更新遮罩上的文字。
           if (statusData.stage === "transcoding") {
             overlayTitle = "Transcoding...";
           } else if (statusData.stage === "downloading") {
             overlayTitle = "Downloading...";
           } else {
-            overlayTitle = "Processing..."; // 預設或排隊狀態
+            overlayTitle = "Processing...";
           }
 
-          // 如果下載完成，則停止輪詢，隱藏遮罩，並顯示下載連結。
           if (statusData.status === "done") {
             clearInterval(pollInterval);
             overlayVisible = false;
-            message = ""; // 清空之前的訊息。
+            message = ""; 
 
-            // 創建一個 div 作為下載連結按鈕的容器。
             const downloadLinkContainer = document.createElement("div");
-            downloadLinkContainer.className = "mt-4"; // 添加一些頂部間距。
+            downloadLinkContainer.className = "mt-4"; 
 
-            // 創建下載連結按鈕。
             const link = document.createElement("a");
             link.href = `${API_BASE_URL}/download_file/${jobId}`;
-            // 應用 Tailwind CSS 類別，使其看起來像一個綠色按鈕。
             link.className =
-              "button is-success is-large";
+              "inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300";
             link.textContent = "Download File";
 
-            // 將按鈕添加到容器中，再將容器添加到訊息區域。
             downloadLinkContainer.appendChild(link);
-            // 使用 Svelte 的響應式特性，直接更新 message 變數的 HTML 內容。
-            // 注意：直接賦值 HTML 字符串可能存在 XSS 風險，但在這裡用於內部生成的 HTML 是可接受的。
             message = downloadLinkContainer.outerHTML;
 
-            downloadBtnDisabled = false; // 啟用按鈕。
+            downloadBtnDisabled = false;
             clearBtnDisabled = false;
           }
         } catch (error) {
-          // 捕獲輪詢過程中的網絡錯誤或後端錯誤。
           message = `Download failed: ${error.message}`;
           clearInterval(pollInterval);
           overlayVisible = false;
           downloadBtnDisabled = false;
           clearBtnDisabled = false;
         }
-      }, 500); // 每 500 毫秒輪詢一次。
+      }, 500);
     } catch (error) {
-      // 捕獲啟動下載請求時的網絡錯誤或後端錯誤。
       message = `Download failed: ${error.message}`;
       overlayVisible = false;
       downloadBtnDisabled = false;
@@ -254,7 +237,7 @@
   }
 
   /**
-   * 處理清除按鈕點擊事件，重置表單和 UI 狀態。
+   * 處理清除按鈕點擊事件。
    */
   function handleClear() {
     url = "";
@@ -265,7 +248,6 @@
     overlayVisible = false;
     downloadBtnDisabled = false;
     clearBtnDisabled = false;
-    // 如果當前是 YouTube 分頁，重置格式選擇為 MP3。
     if (activeTab === "youtube") {
       selectedFormat = "mp3";
     }
@@ -273,176 +255,173 @@
 </script>
 
 <main>
-  <!-- Overlay (下載遮罩) -->
   {#if overlayVisible}
-  <div class="modal is-active">
-    <div class="modal-background"></div>
-    <div class="modal-content box has-text-centered animate-fade-in">
-      <!-- 遮罩標題，根據下載階段動態更新 -->
-      <h2 class="title is-3 has-text-grey-dark mb-4">{overlayTitle}</h2>
-      <div class="has-text-centered">
-        <!-- 進度條，value 綁定到 downloadProgress 變數 -->
-        <progress class="progress is-primary is-large" value={downloadProgress} max="100"></progress>
-        <!-- 進度文字，顯示百分比 -->
-        <p class="has-text-grey-dark is-size-6 has-text-weight-medium">{downloadProgress}%</p>
+  <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full">
+      <h2 class="text-3xl font-semibold text-gray-800 mb-6">{overlayTitle}</h2>
+      <div class="w-full mb-4">
+        <div class="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
+          <div
+            class="h-full bg-blue-500 transition-all duration-500 ease-in-out"
+            style="width: {downloadProgress}%;"
+          ></div>
+        </div>
       </div>
+      <p class="text-lg font-medium text-gray-700 mt-2">{downloadProgress}%</p>
     </div>
   </div>
   {/if}
 
-  <!-- 主要內容區域 -->
-  <section class="hero is-fullheight is-primary is-light">
-    <div class="hero-body">
-      <div class="container has-text-centered">
-        <!-- 頁面標題 -->
-        <h1 class="title is-1 has-text-grey-dark">
-          MediaGrabber
-        </h1>
-        <!-- 卡片化容器，包含導航和表單 -->
-        <div class="columns is-centered">
-          <div class="column is-half">
-            <div class="box p-5 has-background-white">
-          <!-- 分頁導航 -->
-        <div class="tabs is-boxed is-fullwidth">
-          <nav>
-            <ul>
-              <!-- YouTube 分頁按鈕 -->
-              <li class:is-active={activeTab === "youtube"}>
-                <a
-                  on:click={() => handleTabClick("youtube")}
-                  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTabClick('youtube'); }}
-                  role="tab"
-                  aria-selected={activeTab === "youtube"}
-                  tabindex="0"
-                >
-                  YouTube
-                </a>
-              </li>
-              <!-- Facebook 分頁按鈕 -->
-              <li class:is-active={activeTab === "facebook"}>
-                <a
-                  on:click={() => handleTabClick("facebook")}
-                  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTabClick('facebook'); }}
-                  role="tab"
-                  aria-selected={activeTab === "facebook"}
-                  tabindex="0"
-                >
-                  Facebook
-                </a>
-              </li>
-              <!-- Instagram 分頁按鈕 -->
-              <li class:is-active={activeTab === "instagram"}>
-                <a
-                  on:click={() => handleTabClick("instagram")}
-                  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTabClick('instagram'); }}
-                  role="tab"
-                  aria-selected={activeTab === "instagram"}
-                  tabindex="0"
-                >
-                  Instagram
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-        <!-- 下載表單 -->
-        <!-- on:submit|preventDefault 阻止表單的默認提交行為 -->
-        <form on:submit|preventDefault={handleDownload} class="mt-5">
-          <div class="field">
-            <!-- URL 輸入框的 Label，動態顯示平台名稱 -->
-            <label
-              for="url"
-              class="label"
-            >
-              {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} URL
-            </label>
-            <!-- URL 輸入框，bind:value 實現雙向綁定 -->
-            <div class="control">
-              <input
-                type="text"
-                id="url"
-                name="url"
-                bind:value={url}
-                on:input={handleUrlInput}
-                placeholder={urlInputPlaceholder}
-                required
-                class="input is-large"
-              />
-            </div>
-          </div>
-          <!-- 格式選擇容器，只在 YouTube 分頁顯示 -->
-          {#if activeTab === "youtube"}
-            <div class="field">
-              <label class="label">Download Format</label>
-              <div class="control">
-                <label class="radio" for="format-mp3">
-                  <input
-                    type="radio"
-                    name="format"
-                    value="mp3"
-                    bind:group={selectedFormat}
-                    id="format-mp3"
-                  />
-                  MP3 (Sound)
+  <section class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center p-4">
+    <div class="container mx-auto text-center">
+      <h1 class="text-5xl font-bold text-white mb-8">
+        MediaGrabber
+      </h1>
+      <div class="flex justify-center">
+        <div class="w-full max-w-md">
+          <div class="bg-white rounded-lg shadow-xl p-6">
+            <nav class="flex space-x-4 mb-6 justify-center" aria-label="Platform tabs">
+              <button
+                on:click={() => handleTabClick("youtube")}
+                class="{activeTab === 'youtube' ? activeTabClasses.active : activeTabClasses.inactive}"
+                role="tab"
+                aria-selected={activeTab === "youtube"}
+              >
+                <i class="fab fa-youtube mr-2"></i> YouTube
+              </button>
+              <button
+                on:click={() => handleTabClick("facebook")}
+                class="{activeTab === 'facebook' ? activeTabClasses.active : activeTabClasses.inactive}"
+                role="tab"
+                aria-selected={activeTab === "facebook"}
+              >
+                <i class="fab fa-facebook mr-2"></i> Facebook
+              </button>
+              <button
+                on:click={() => handleTabClick("instagram")}
+                class="{activeTab === 'instagram' ? activeTabClasses.active : activeTabClasses.inactive}"
+                role="tab"
+                aria-selected={activeTab === "instagram"}
+              >
+                <i class="fab fa-instagram mr-2"></i> Instagram
+              </button>
+            </nav>
+
+            <form on:submit|preventDefault={handleDownload} class="space-y-4">
+              <div>
+                <label for="url" class="block text-lg font-medium text-gray-700 mb-2">
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} URL
                 </label>
-                <label class="radio" for="format-mp4">
+                <div class="relative">
                   <input
-                    type="radio"
-                    name="format"
-                    value="mp4"
-                    bind:group={selectedFormat}
-                    id="format-mp4"
+                    type="text"
+                    id="url"
+                    name="url"
+                    bind:value={url}
+                    on:input={handleUrlInput}
+                    placeholder={urlInputPlaceholder}
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-lg"
                   />
-                  MP4 (Video)
-                </label>
+                </div>
               </div>
-            </div>
-          {/if}
-          <!-- 縮圖容器，只有當 thumbnail 變數有值時才顯示 -->
-          {#if thumbnail}
-            <figure class="image is-16by9 mb-5">
-              <img
-                src={thumbnail}
-                alt="Video Thumbnail"
-              />
-            </figure>
-          {/if}
-          <!-- 標題容器，只有當 title 變數有值時才顯示 -->
-          {#if title}
-            <h2 class="title is-4 has-text-centered mb-5">{title}</h2>
-          {/if}
-          <!-- 下載按鈕 -->
-          <!-- 綁定到 downloadBtnDisabled 變數 -->
-          <div class="field is-grouped is-grouped-centered">
-            <p class="control">
-              <button
-                type="submit"
-                class="button is-primary is-large is-fullwidth"
-                disabled={downloadBtnDisabled}
-              >
-                Go
-              </button>
-            </p>
-            <p class="control">
-              <button
-                type="button"
-                class="button is-light is-large is-fullwidth"
-                on:click={handleClear}
-                disabled={clearBtnDisabled}
-              >
-                Clear
-              </button>
-            </p>
+
+              {#if activeTab === "youtube"}
+                <div>
+                  <p class="block text-lg font-medium text-gray-700 mb-2">Download Format</p>
+                  <div class="flex items-center space-x-4">
+                    <label for="format-mp3" class="inline-flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="format"
+                        value="mp3"
+                        bind:group={selectedFormat}
+                        id="format-mp3"
+                        class="form-radio accent-blue-500 h-5 w-5"
+                      />
+                      <span class="ml-2 text-gray-700">MP3 (Sound)</span>
+                    </label>
+                    <label for="format-mp4" class="inline-flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="format"
+                        value="mp4"
+                        bind:group={selectedFormat}
+                        id="format-mp4"
+                        class="form-radio accent-blue-500 h-5 w-5"
+                      />
+                      <span class="ml-2 text-gray-700">MP4 (Video)</span>
+                    </label>
+                  </div>
+                </div>
+              {/if}
+
+              {#if thumbnail}
+                <figure class="w-full h-48 object-cover rounded-md mb-4 overflow-hidden">
+                  <img src={thumbnail} alt="Video Thumbnail" class="w-full h-full object-cover"/>
+                </figure>
+              {/if}
+              {#if title}
+                <h2 class="text-2xl font-semibold text-gray-800 text-center mb-4">{title}</h2>
+              {/if}
+
+              <div class="grid grid-cols-2 gap-4">
+                <button
+                  type="submit"
+                  class="{buttonClasses.primary} {downloadBtnDisabled ? buttonClasses.disabled : ''}"
+                  disabled={downloadBtnDisabled}
+                >
+                  Go
+                </button>
+                <button
+                  type="button"
+                  on:click={handleClear}
+                  class="{buttonClasses.secondary} {clearBtnDisabled ? buttonClasses.disabled : ''}"
+                  disabled={clearBtnDisabled}
+                >
+                  Clear
+                </button>
+              </div>
+            </form>
+
+            {#if message}
+              <div class="{currentMessageClasses} mt-5 text-center">
+                {@html message}
+              </div>
+            {/if}
           </div>
-        </form>
-        <!-- 訊息顯示區域 -->
-        <!-- {@html message} 用於渲染包含 HTML 內容的字符串 -->
-        <div class="notification is-light is-primary mt-5 has-background-white">
-          {@html message}
         </div>
       </div>
     </div>
-  </div>
-</div>
-</section>
+  </section>
 </main>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  .form-radio {
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 9999px;
+    border-width: 2px;
+    border-color: #9ca3af; /* gray-400 */
+    background-color: white;
+    transition: background-color 0.2s, border-color 0.2s;
+  }
+  .form-radio:checked {
+    background-color: #3b82f6; /* blue-500 */
+    border-color: #3b82f6; /* blue-500 */
+  }
+  .form-radio:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus ring */
+  }
+  .accent-blue-500 {
+    accent-color: #3b82f6; /* blue-500 */
+  }
+</style>
