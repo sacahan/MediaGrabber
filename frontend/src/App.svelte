@@ -20,8 +20,8 @@
 
   // Tailwind CSS 樣式類別定義 (這些類別現在應該由 CDN 提供)
   let activeTabClasses = {
-    active: "bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
-    inactive: "bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out"
+    active: "flex items-center justify-center bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
+    inactive: "flex items-center justify-center bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out"
   };
 
   let buttonClasses = {
@@ -333,7 +333,7 @@
                 role="tab"
                 aria-selected={activeTab === "threads"}
               >
-                <i class="fab fa-threads mr-2"></i> Threads
+                <i class="fa-brands fa-threads mr-2"></i> Threads
               </button>
             </nav>
 
