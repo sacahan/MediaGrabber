@@ -292,9 +292,9 @@
         MediaGrabber
       </h1>
       <div class="flex justify-center">
-        <div class="inline-block">
+        <div class="w-full max-w-3xl">
           <div class="bg-white rounded-lg shadow-xl p-6">
-            <nav class="flex space-x-4 mb-6 justify-center" aria-label="Platform tabs">
+            <nav class="flex flex-wrap gap-4 mb-6 justify-center" aria-label="Platform tabs">
               <button
                 on:click={() => handleTabClick("youtube")}
                 class="{activeTab === 'youtube' ? activeTabClasses.active : activeTabClasses.inactive}"
