@@ -294,7 +294,7 @@
       <div class="flex justify-center">
         <div class="w-full max-w-xl">
           <div class="bg-white rounded-lg shadow-xl p-6">
-            <nav class="flex space-x-4 mb-6 justify-center" aria-label="Platform tabs">
+            <nav class="flex space-x-4 mb-6 justify-start overflow-x-auto pb-2" aria-label="Platform tabs">
               <button
                 on:click={() => handleTabClick("youtube")}
                 class="{activeTab === 'youtube' ? activeTabClasses.active : activeTabClasses.inactive}"
