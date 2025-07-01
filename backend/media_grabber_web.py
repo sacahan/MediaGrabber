@@ -112,8 +112,8 @@ def do_download(job_id: str, url: str, source: str, format: str = 'mp3'):
                 download_video_file(url, Path(tmpdir), progress_hook=hook)
                 pattern = '*.mp4'
                 mimetype = 'video/mp4'
-        else:
-            # For Facebook/Instagram, first check video size limit (50MB).
+        else: # facebook, instagram, x, threads
+            # For other sources, first check video size limit (50MB).
             # This is done by extracting info without downloading.
             info = YoutubeDL({'quiet': True, 'no_warnings': True, 'noplaylist': True})
             info_dict = info.extract_info(url, download=False)

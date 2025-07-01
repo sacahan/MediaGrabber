@@ -2,7 +2,7 @@
 
 A simple Python downloader:
 - **YouTube → MP3/MP4** via CLI or Web GUI (choose format)
-- **Facebook → MP4** and **Instagram → MP4** via Web GUI (50 MB size limit)
+- **Facebook → MP4**, **Instagram → MP4**, **X (Twitter) → MP4**, and **Threads → MP4** via Web GUI (50 MB size limit)
 
 ## Project Structure
 
@@ -122,7 +122,7 @@ cd frontend
 npm run dev
 ```
 
-The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI. The platform buttons (YouTube, Facebook, Instagram) now include icons for better visual identification.
+The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI. The platform buttons (YouTube, Facebook, Instagram, X, Threads) now include icons for better visual identification.
 
 ### CLI Usage
 
