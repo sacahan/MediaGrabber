@@ -1,6 +1,6 @@
 <script>
   // Svelte 響應式狀態定義
-  let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram, x, threads)
+  let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
   let url = ""; // URL 輸入框的值
   let title = ""; // 影片標題
   let thumbnail = ""; // 影片縮圖 URL
@@ -63,12 +63,6 @@
     } else if (tabKey === "instagram") {
       urlInputPlaceholder = "https://www.instagram.com/...";
       selectedFormat = "mp4"; // Instagram 預設 MP4
-    } else if (tabKey === "x") {
-      urlInputPlaceholder = "https://x.com/...";
-      selectedFormat = "mp4"; // X 預設 MP4
-    } else if (tabKey === "threads") {
-      urlInputPlaceholder = "https://www.threads.net/...";
-      selectedFormat = "mp4"; // Threads 預設 MP4
     }
   }
 
@@ -106,14 +100,6 @@
       }
     } else if (activeTab === "instagram") {
       if (val.includes("instagram.com")) {
-        showMeta = true;
-      }
-    } else if (activeTab === "x") {
-      if (val.includes("x.com") || val.includes("twitter.com")) {
-        showMeta = true;
-      }
-    } else if (activeTab === "threads") {
-      if (val.includes("threads.net")) {
         showMeta = true;
       }
     }
@@ -318,22 +304,6 @@
                 aria-selected={activeTab === "instagram"}
               >
                 <i class="fab fa-instagram mr-2"></i> Instagram
-              </button>
-              <button
-                on:click={() => handleTabClick("x")}
-                class="{activeTab === 'x' ? activeTabClasses.active : activeTabClasses.inactive}"
-                role="tab"
-                aria-selected={activeTab === "x"}
-              >
-                <i class="fab fa-x-twitter mr-2"></i> X
-              </button>
-              <button
-                on:click={() => handleTabClick("threads")}
-                class="{activeTab === 'threads' ? activeTabClasses.active : activeTabClasses.inactive}"
-                role="tab"
-                aria-selected={activeTab === "threads"}
-              >
-                <i class="fa-brands fa-threads mr-2"></i> Threads
               </button>
             </nav>
 
