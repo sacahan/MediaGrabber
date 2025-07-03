@@ -20,24 +20,33 @@
 
   // Tailwind CSS 樣式類別定義 (這些類別現在應該由 CDN 提供)
   let activeTabClasses = {
-    active: "flex items-center justify-center bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
-    inactive: "flex items-center justify-center bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out"
+    active:
+      "flex items-center justify-center bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
+    inactive:
+      "flex items-center justify-center bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out",
   };
 
   let buttonClasses = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300",
-    secondary: "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg w-full transition duration-300",
-    disabled: "opacity-50 cursor-not-allowed"
+    primary:
+      "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300",
+    secondary:
+      "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg w-full transition duration-300",
+    disabled: "opacity-50 cursor-not-allowed",
   };
 
   let messageClasses = {
-    success: "bg-green-100 text-green-800 border border-green-300 p-4 rounded-md",
+    success:
+      "bg-green-100 text-green-800 border border-green-300 p-4 rounded-md",
     error: "bg-red-100 text-red-800 border border-red-300 p-4 rounded-md",
-    default: "bg-gray-100 text-gray-800 border border-gray-300 p-4 rounded-md"
+    default: "bg-gray-100 text-gray-800 border border-gray-300 p-4 rounded-md",
   };
 
   // 根據下載狀態動態設置 message 的 class
-  $: currentMessageClasses = message.includes("Error") ? messageClasses.error : (message.includes("Download File") ? messageClasses.success : messageClasses.default);
+  $: currentMessageClasses = message.includes("Error")
+    ? messageClasses.error
+    : message.includes("Download File")
+      ? messageClasses.success
+      : messageClasses.default;
 
   /**
    * 處理分頁切換的邏輯。
@@ -203,10 +212,10 @@
           if (statusData.status === "done") {
             clearInterval(pollInterval);
             overlayVisible = false;
-            message = ""; 
+            message = "";
 
             const downloadLinkContainer = document.createElement("div");
-            downloadLinkContainer.className = "mt-4"; 
+            downloadLinkContainer.className = "mt-4";
 
             const link = document.createElement("a");
             link.href = `${API_BASE_URL}/download_file/${jobId}`;
@@ -256,34 +265,47 @@
 
 <main>
   {#if overlayVisible}
-  <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full">
-      <h2 class="text-3xl font-semibold text-gray-800 mb-6">{overlayTitle}</h2>
-      <div class="w-full mb-4">
-        <div class="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
-          <div
-            class="h-full bg-blue-500 transition-all duration-500 ease-in-out"
-            style="width: {downloadProgress}%;"
-          ></div>
+    <div
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full"
+      >
+        <h2 class="text-3xl font-semibold text-gray-800 mb-6">
+          {overlayTitle}
+        </h2>
+        <div class="w-full mb-4">
+          <div class="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-blue-500 transition-all duration-500 ease-in-out"
+              style="width: {downloadProgress}%;"
+            ></div>
+          </div>
         </div>
+        <p class="text-lg font-medium text-gray-700 mt-2">
+          {downloadProgress}%
+        </p>
       </div>
-      <p class="text-lg font-medium text-gray-700 mt-2">{downloadProgress}%</p>
     </div>
-  </div>
   {/if}
 
-  <section class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center p-4">
+  <section
+    class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center p-4"
+  >
     <div class="container mx-auto text-center">
-      <h1 class="text-5xl font-bold text-white mb-8">
-        MediaGrabber
-      </h1>
+      <h1 class="text-5xl font-bold text-white mb-8">MediaGrabber</h1>
       <div class="flex justify-center">
         <div class="w-full max-w-3xl">
           <div class="bg-white rounded-lg shadow-xl p-6">
-            <nav class="flex flex-wrap gap-4 mb-6 justify-center" aria-label="Platform tabs">
+            <nav
+              class="flex flex-wrap gap-4 mb-6 justify-center"
+              aria-label="Platform tabs"
+            >
               <button
                 on:click={() => handleTabClick("youtube")}
-                class="{activeTab === 'youtube' ? activeTabClasses.active : activeTabClasses.inactive}"
+                class={activeTab === "youtube"
+                  ? activeTabClasses.active
+                  : activeTabClasses.inactive}
                 role="tab"
                 aria-selected={activeTab === "youtube"}
               >
@@ -291,7 +313,9 @@
               </button>
               <button
                 on:click={() => handleTabClick("facebook")}
-                class="{activeTab === 'facebook' ? activeTabClasses.active : activeTabClasses.inactive}"
+                class={activeTab === "facebook"
+                  ? activeTabClasses.active
+                  : activeTabClasses.inactive}
                 role="tab"
                 aria-selected={activeTab === "facebook"}
               >
@@ -299,7 +323,9 @@
               </button>
               <button
                 on:click={() => handleTabClick("instagram")}
-                class="{activeTab === 'instagram' ? activeTabClasses.active : activeTabClasses.inactive}"
+                class={activeTab === "instagram"
+                  ? activeTabClasses.active
+                  : activeTabClasses.inactive}
                 role="tab"
                 aria-selected={activeTab === "instagram"}
               >
@@ -309,7 +335,10 @@
 
             <form on:submit|preventDefault={handleDownload} class="space-y-4">
               <div>
-                <label for="url" class="block text-lg font-medium text-gray-700 mb-2">
+                <label
+                  for="url"
+                  class="block text-lg font-medium text-gray-700 mb-2"
+                >
                   {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} URL
                 </label>
                 <div class="relative">
@@ -328,9 +357,14 @@
 
               {#if activeTab === "youtube"}
                 <div>
-                  <p class="block text-lg font-medium text-gray-700 mb-2">Download Format</p>
+                  <p class="block text-lg font-medium text-gray-700 mb-2">
+                    Download Format
+                  </p>
                   <div class="flex items-center space-x-4 justify-center">
-                    <label for="format-mp3" class="inline-flex items-center cursor-pointer">
+                    <label
+                      for="format-mp3"
+                      class="inline-flex items-center cursor-pointer"
+                    >
                       <input
                         type="radio"
                         name="format"
@@ -341,7 +375,10 @@
                       />
                       <span class="ml-2 text-gray-700">MP3 (Sound)</span>
                     </label>
-                    <label for="format-mp4" class="inline-flex items-center cursor-pointer">
+                    <label
+                      for="format-mp4"
+                      class="inline-flex items-center cursor-pointer"
+                    >
                       <input
                         type="radio"
                         name="format"
@@ -357,18 +394,30 @@
               {/if}
 
               {#if thumbnail}
-                <figure class="w-full h-48 object-cover rounded-md mb-4 overflow-hidden">
-                  <img src={thumbnail} alt="Video Thumbnail" class="w-full h-full object-cover"/>
+                <figure
+                  class="w-full h-48 object-cover rounded-md mb-4 overflow-hidden"
+                >
+                  <img
+                    src={thumbnail}
+                    alt="Video Thumbnail"
+                    class="w-full h-full object-cover"
+                  />
                 </figure>
               {/if}
               {#if title}
-                <h2 class="text-2xl font-semibold text-gray-800 text-center mb-4">{title}</h2>
+                <h2
+                  class="text-2xl font-semibold text-gray-800 text-center mb-4"
+                >
+                  {title}
+                </h2>
               {/if}
 
               <div class="grid grid-cols-2 gap-4 flex justify-center">
                 <button
                   type="submit"
-                  class="{buttonClasses.primary} {downloadBtnDisabled ? buttonClasses.disabled : ''}"
+                  class="{buttonClasses.primary} {downloadBtnDisabled
+                    ? buttonClasses.disabled
+                    : ''}"
                   disabled={downloadBtnDisabled}
                 >
                   Go
@@ -376,7 +425,9 @@
                 <button
                   type="button"
                   on:click={handleClear}
-                  class="{buttonClasses.secondary} {clearBtnDisabled ? buttonClasses.disabled : ''}"
+                  class="{buttonClasses.secondary} {clearBtnDisabled
+                    ? buttonClasses.disabled
+                    : ''}"
                   disabled={clearBtnDisabled}
                 >
                   Clear
@@ -398,8 +449,12 @@
 
 <style>
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
@@ -411,7 +466,9 @@
     border-width: 2px;
     border-color: #9ca3af; /* gray-400 */
     background-color: white;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
   }
   .form-radio:checked {
     background-color: #3b82f6; /* blue-500 */
