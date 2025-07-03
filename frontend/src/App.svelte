@@ -1,6 +1,8 @@
 <script>
+
+
   // Svelte 響應式狀態定義
-  let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
+  let activeTab =    "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
   let url = ""; // URL 輸入框的值
   let title = ""; // 影片標題
   let thumbnail = ""; // 影片縮圖 URL
