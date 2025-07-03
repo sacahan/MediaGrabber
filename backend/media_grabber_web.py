@@ -5,7 +5,7 @@ MediaGrabber Web GUI using Flask (YouTube MP3, Facebook/Instagram MP4).
 
 from pathlib import Path
 import tempfile, shutil
-from flask import Flask, request, Response, stream_with_context, jsonify
+from flask import Flask, request, Response, stream_with_context, jsonify, send_from_directory
 from flask_cors import CORS # Import Flask-CORS
 
 from media_grabber import download_and_extract_audio, download_video_file
@@ -18,32 +18,35 @@ from logging.handlers import RotatingFileHandler
 import threading
 import uuid
 
-# Ensure the log directory exists
-log_dir = Path(__file__).parent / "log"
-log_dir.mkdir(parents=True, exist_ok=True)
+app = Flask(__name__, static_folder='frontend/dist', static_url_path='/')
+CORS(app)
 
-# Configure logging for the web application.
-# This helps in debugging and monitoring the server's activity.
-log_file = log_dir / "flask.log"
-handler = RotatingFileHandler(log_file, maxBytes=10000, backupCount=1)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-
-app = Flask(__name__)
-app.logger.setLevel(logging.INFO)
-app.logger.addHandler(handler)
-CORS(app) # Enable CORS for all routes. This is crucial for frontend-backend separation.
+if __name__ != '__main__':
+    # When running via Gunicorn, it handles logging.
+    # We can inherit Gunicorn's logger settings.
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+    # Make sure that other loggers also use the gunicorn handler
+    logging.basicConfig(handlers=gunicorn_logger.handlers, level=gunicorn_logger.level, force=True)
+else:
+    # When running directly for development, log to the console.
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    app.logger.setLevel(logging.INFO)
 
 # Dictionary to store the progress and status of each download job.
 # Key: job_id (string), Value: dictionary containing 'progress', 'status', 'stage', etc.
 PROGRESS_STATE = {}
 
 
-# Removed the / route as it will be handled by the Svelte frontend.
-# @app.route('/', methods=['GET'])
-# def index():
-#     """Renders the main HTML page for the web GUI."""
-#     return render_template('index.html')
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    """Serves the Svelte frontend's static files."""
+    if path != "" and Path(app.static_folder, path).exists():
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route('/metadata', methods=['POST'])
@@ -242,4 +245,3 @@ if __name__ == '__main__':
     # host='0.0.0.0' makes the server accessible from other machines on the network.
     # use_reloader=False is set to avoid issues with threading and multiple Flask instances.
     app.run(debug=True, host='0.0.0.0', port=8080, use_reloader=False)
-

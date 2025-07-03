@@ -1,0 +1,24 @@
+# Ignore Docker related files
+Dockerfile
+.dockerignore
+build_and_run.sh
+
+# Ignore git and vscode config
+.git
+.gitignore
+.vscode
+
+# Ignore node_modules
+frontend/node_modules
+
+# Ignore Python virtual environment and cache
+backend/.venv
+backend/__pycache__
+backend/.pytest_cache
+
+# Ignore test files and logs
+backend/test_*.py
+backend/log
+
+# Ignore output directory
+output

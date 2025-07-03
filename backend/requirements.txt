@@ -2,3 +2,6 @@ Flask>=2.0
 yt-dlp>=2023.0.0
 tqdm
 Flask-CORS
+gunicorn
+pre-commit
+ruff
