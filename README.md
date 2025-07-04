@@ -115,7 +115,13 @@ Now, every time you run `git commit`, `pre-commit` will automatically run `Ruff`
 
 ## Usage
 
-### Backend API (Flask)
+This project can be run in two modes: **Development** for local development and testing, and **Docker** for a production-like containerized environment.
+
+### Development Mode
+
+In Development Mode, the frontend and backend are run as separate processes, allowing for hot-reloading and easier debugging.
+
+#### 1. Backend API (Flask)
 
 Navigate to the `backend` directory and run the Flask application:
 
@@ -127,7 +133,7 @@ python media_grabber_web.py
 
 The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`.
 
-### Frontend (Svelte with Tailwind CSS)
+#### 2. Frontend (Svelte with Tailwind CSS)
 
 Navigate to the `frontend` directory and start the Svelte development server:
 
@@ -136,9 +142,9 @@ cd frontend
 npm run dev
 ```
 
-The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI. The platform buttons (YouTube, Facebook, Instagram) now include icons for better visual identification.
+The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI.
 
-### CLI Usage
+#### 3. CLI Usage
 
 Download audio or video from supported platforms via script:
 
@@ -154,17 +160,53 @@ Options:
 
 Examples:
 
-# Download YouTube audio as MP3 to the project's root output directory
+- Download YouTube audio as MP3 to the project's root output directory
+
+```
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://youtu.be/abc123 -f mp3 -o ../output
+```
 
-# Download YouTube video as MP4 to a custom directory
+- Download YouTube video as MP4 to a custom directory
+
+```
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://youtu.be/abc123 -f mp4 -o /path/to/your/videos
+```
 
-# Download Facebook video as MP4
+- Download Facebook video as MP4
+
+```
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://facebook.com/... -f mp4
+```
+
+### Docker Mode
+
+The `build_and_run.sh` script provides a convenient way to build and run the application using Docker. This is the recommended approach for a production-like environment.
+
+#### Build and Run
+
+Execute the script from the project root:
+
+```bash
+./build_and_run.sh
+```
+
+This script will:
+1.  Build the frontend and copy the static files to the `backend/static` directory.
+2.  Build a Docker image named `mediagrabber`.
+3.  Run a Docker container, mapping port `8080` to the host and mounting the `output` directory for persistent storage of downloaded files.
+
+The application will be accessible at `http://localhost:8080`.
+
+#### Stop and Remove
+
+To stop and remove the Docker container, use the following command:
+
+```bash
+docker stop mediagrabber && docker rm mediagrabber
+```
