@@ -126,7 +126,7 @@ Navigate to the `backend` directory and run the Flask application using Uvicorn:
 
 ```bash
 cd backend
-uv run media_grabber_web.py
+python media_grabber_web.py
 ```
 
 The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`. This approach uses Uvicorn for better performance and asynchronous support.

@@ -106,6 +106,35 @@ class MediaGrabberTests(unittest.TestCase):
         ydl_opts = mock_youtube_dl.call_args_list[1].args[0]
         self.assertEqual(ydl_opts["merge_output_format"], "mp4")
 
+    @patch("media_grabber.YoutubeDL")
+    def test_download_video_info(self, mock_youtube_dl):
+        # Mock the behavior of YoutubeDL
+        mock_instance = MagicMock()
+        mock_instance.extract_info.return_value = {"id": "12345", "title": "Test Video", "uploader": "Test Uploader", "duration": 300}
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        # Call the function to test
+        video_info = _prepare_download("https://www.youtube.com/watch?v=12345", Path(self.test_dir))
+        print(video_info)
+
+        # Assertions
+        self.assertIn("Test Video", video_info)
+        mock_instance.extract_info.assert_called_with("https://www.youtube.com/watch?v=12345", download=False)
+
+    @patch("media_grabber.YoutubeDL")
+    def test_download_real_video_info(self, mock_youtube_dl):
+        # Mock the behavior of YoutubeDL
+        mock_instance = MagicMock()
+        mock_instance.extract_info.return_value = {"id": "yBLI-Hxg0AQ", "title": "Real Test Video", "uploader": "Real Uploader", "duration": 600}
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        # Call the function to test
+        video_info = _prepare_download("https://www.youtube.com/watch?v=yBLI-Hxg0AQ", Path(self.test_dir))
+
+        # Assertions
+        self.assertIn("Real Test Video", video_info)
+        mock_instance.extract_info.assert_called_with("https://www.youtube.com/watch?v=yBLI-Hxg0AQ", download=False)
+
 
 if __name__ == "__main__":
     unittest.main()
