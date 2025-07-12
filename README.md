@@ -11,7 +11,7 @@ MediaGrabber/
 ├── backend/             # Flask REST API and Python core logic
 │   ├── media_grabber.py
 │   ├── media_grabber_web.py
-│   ├── requirements.txt
+│   ├── pyproject.toml   # Python dependencies configuration
 │   ├── .venv/           # Python virtual environment
 │   ├── __pycache__/
 │   └── log/             # Flask application logs
@@ -46,16 +46,15 @@ MediaGrabber/
 
 ### Backend Installation
 
-Navigate to the `backend` directory and install Python dependencies:
+Navigate to the `backend` directory and install Python dependencies using `uv`:
 
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# upgrade pip and wheel for best compatibility
-pip install --upgrade pip wheel
-# install dependencies
-pip install -r requirements.txt
+# Install uv if not already installed
+pip install uv
+
+# Automatically create a virtual environment and install dependencies
+uv sync
 cd .. # Go back to project root
 ```
 
@@ -121,17 +120,16 @@ This project can be run in two modes: **Development** for local development and 
 
 In Development Mode, the frontend and backend are run as separate processes, allowing for hot-reloading and easier debugging.
 
-#### 1. Backend API (Flask)
+#### 1. Backend API (Flask with Uvicorn)
 
-Navigate to the `backend` directory and run the Flask application:
+Navigate to the `backend` directory and run the Flask application using Uvicorn:
 
 ```bash
 cd backend
-source .venv/bin/activate # Activate virtual environment
-python media_grabber_web.py
+uv run media_grabber_web.py
 ```
 
-The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`.
+The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`. This approach uses Uvicorn for better performance and asynchronous support.
 
 #### 2. Frontend (Svelte with Tailwind CSS)
 

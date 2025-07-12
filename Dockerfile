@@ -13,8 +13,10 @@ WORKDIR /app
 # Install ffmpeg
 RUN apt-get update && apt-get install -y ffmpeg
 
-COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies using pyproject.toml
+COPY backend/pyproject.toml ./
+RUN pip install --no-cache-dir .
+
 COPY backend/ ./
 COPY --from=builder /app/frontend/dist ./frontend/dist
 EXPOSE 8080

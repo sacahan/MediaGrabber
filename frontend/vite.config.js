@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 // import autoprefixer from 'autoprefixer';
 
 // https://vite.dev/config/
@@ -13,4 +13,4 @@ export default defineConfig({
       ],
     },
   },
-})
+});

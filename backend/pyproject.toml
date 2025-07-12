@@ -6,24 +6,17 @@ build-backend = "setuptools.build_meta"
 name = "MediaGrabber"
 version = "0.1.0"
 description = "A media grabbing application."
-authors = [
-    { name = "Brian Han", email = "sacahan@gmail.com" }
-]
+authors = [{ name = "Brian Han", email = "sacahan@gmail.com" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 
-[project.dependencies]
-Flask = ">=2.0"
-yt-dlp = ">=2023.0.0"
-tqdm = "*"
-Flask-CORS = "*"
-gunicorn = "*"
-pre-commit = "*"
-ruff = "*"
-
-[tool]
-
-[tool.ruff]
-line-length = 88
-select = ["E", "F", "W"]
+dependencies = [
+    "Flask>=2.0",
+    "yt-dlp>=2023.0.0",
+    "tqdm",
+    "Flask-CORS",
+    "gunicorn",
+    "pre-commit",
+    "ruff",
+]
