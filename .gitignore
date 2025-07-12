@@ -69,3 +69,32 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Additional Python rules
+*.pyo
+*.pyd
+*.pdb
+*.pot
+*.mo
+*.sqlite3
+*.db
+*.db-journal
+*.dat
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Additional JavaScript/Node.js rules
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Additional Svelte rules
+*.svelte-cache
+
+# General macOS rules
+.AppleDouble
+.LSOverride
