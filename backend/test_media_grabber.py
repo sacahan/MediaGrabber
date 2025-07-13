@@ -16,6 +16,26 @@ from media_grabber import (
 
 
 class MediaGrabberTests(unittest.TestCase):
+    """
+    Unit tests for the media_grabber module functions.
+
+    Tests included:
+    - test_prepare_download_safe_title: Verifies that _prepare_download correctly handles a safe title.
+    - test_prepare_download_unsafe_title: Verifies that _prepare_download sanitizes titles with invalid characters.
+    - test_prepare_download_long_and_unsafe_title: Checks that long titles with invalid characters are sanitized and truncated to 50 characters.
+    - test_download_and_extract_audio: Tests the download_and_extract_audio function to ensure it calls YoutubeDL with the correct postprocessor options for audio extraction.
+    - test_download_video_file: Tests the download_video_file function to ensure it calls YoutubeDL with the correct merge_output_format option.
+    - test_download_video_info: Tests that _prepare_download returns correct video info metadata without downloading.
+    - test_download_real_video_info: Similar to test_download_video_info but with a different video URL to verify consistent behavior.
+
+    Setup and teardown:
+    - setUp: Creates a temporary directory for test outputs.
+    - tearDown: Removes the temporary directory after tests complete.
+
+    Mocks:
+    - Uses unittest.mock.patch to mock YoutubeDL and its extract_info method to avoid actual network calls and downloads.
+    """
+
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
 
