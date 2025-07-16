@@ -4,6 +4,9 @@ A simple Python downloader:
 - **YouTube → MP3/MP4** via CLI or Web GUI (choose format)
 - **Facebook → MP4** and **Instagram → MP4** via Web GUI (50 MB size limit)
 
+![demo](https://github.com/user-attachments/assets/99ef6eaf-a6a2-43ef-b922-67d481daf400)
+
+
 ## Project Structure
 
 ```
