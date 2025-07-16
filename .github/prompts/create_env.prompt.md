@@ -4,7 +4,7 @@
 
 在終端機中，進入專案目錄，執行以下指令：
 
-```bash
+```zsh
 git init
 ```
 
@@ -16,21 +16,44 @@ git init
 ## 3. 新增 .gitignore 檔案
 
 請參考 #file:./create_gitignore.prompt.md 的相關步驟來建立 `.gitignore` 檔案。
-這將有助於忽略不需要提交到 Git 的檔案和目錄
+這將有助於忽略不需要提交到 Git 的檔案和目錄。
 
-## 4. 進行首次檔案提交
+## 4. 新增 .editorconfig 檔案
 
-```bash
+在專案根目錄新增 `.editorconfig` 檔案，並加入以下內容以統一編碼風格：
+
+```editorconfig
+root = true
+
+[*]
+indent_style = tab
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+```
+
+這將確保所有開發人員在不同編輯器中使用一致的格式。
+
+## 5. 進行首次檔案提交
+
+```zsh
 git add .
 git commit -m "Initial commit"
 ```
 
-## 5. 設定遠端儲存庫（可選）
-
-詢問是否有遠端儲存庫需要連接。如果有，請提供遠端儲存庫的 URL。
-如果沒有，則可以跳過此步驟。
-
-```bash
+## 6. 設定遠端儲存庫（可選）
+```zsh
+git remote add origin <遠端儲存庫 URL>
+git branch -M main
+git push -u origin main
+```zsh
+git remote add origin <遠端儲存庫 URL>
+git branch -M main
+git push -u origin main
+```
+```zsh
 git remote add origin <遠端儲存庫 URL>
 git branch -M main
 git push -u origin main
