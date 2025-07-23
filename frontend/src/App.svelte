@@ -414,25 +414,21 @@
                 </h2>
               {/if}
 
-              <div class="grid grid-cols-2 gap-4 flex justify-center">
+                            <div class="grid grid-cols-2 gap-4 flex justify-center">
                 <button
                   type="submit"
-                  class="{buttonClasses.primary} {downloadBtnDisabled
-                    ? buttonClasses.disabled
-                    : ''}"
+                  class="{buttonClasses.primary} {downloadBtnDisabled ? buttonClasses.disabled : ''}"
                   disabled={downloadBtnDisabled}
                 >
-                  Go
+                  <i class="fas fa-download mr-2"></i> Download
                 </button>
                 <button
                   type="button"
+                  class="{buttonClasses.secondary} {clearBtnDisabled ? buttonClasses.disabled : ''}"
                   on:click={handleClear}
-                  class="{buttonClasses.secondary} {clearBtnDisabled
-                    ? buttonClasses.disabled
-                    : ''}"
                   disabled={clearBtnDisabled}
                 >
-                  Clear
+                  <i class="fas fa-trash-alt mr-2"></i> Clear
                 </button>
               </div>
             </form>
