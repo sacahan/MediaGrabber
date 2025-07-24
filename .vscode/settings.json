@@ -35,7 +35,7 @@
     // GitHub Copilot Chat
     "github.copilot.chat.followUps": "always",
     "github.copilot.chat.localeOverride": "zh-TW",
-    "github.copilot.chat.useProjectTemplates": true,
+    "github.copilot.chat.useProjectTemplates": false,
     "github.copilot.chat.scopeSelection": true,
     "chat.detectParticipant.enabled": false,
     "chat.promptFiles": true,
@@ -56,20 +56,24 @@
     // GitHub Copilot Chat - 測試相關設定
     "github.copilot.chat.setupTests.enabled": true,
     "github.copilot.chat.generateTests.codeLens": true,
-    "github.copilot.chat.testGeneration.instructions": [
-        {
-            "file": ".copilot-test-instructions.md"
-        }
-    ],
+    // "github.copilot.chat.testGeneration.instructions": [
+    //     {
+    //         "file": ".copilot-test-instructions.md"
+    //     }
+    // ],
     // GitHub Copilot Chat - 自訂提示
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-    "github.copilot.chat.codeGeneration.instructions": [
-        {
-            "file": ".github/copilot-instructions.md"
-        }
-    ],
+	// "github.copilot.chat.codeGeneration.instructions": [
+    //     {
+    //         "file": ".github/copilot-instructions.md"
+    //     },
+	// 	{
+	// 		"text": "Code comments should be in #zh-tw."
+	// 	}
+    // ],
     "github.copilot.chat.reviewSelection.instructions": [
-        {
+
+		{
             "text": "Always response in #zh-tw."
         },
         {
@@ -127,5 +131,5 @@
         "src"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
+    "python.testing.pytestEnabled": true
 }

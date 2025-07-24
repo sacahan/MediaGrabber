@@ -1,8 +1,13 @@
+---
+mode:  agent
+description: 'Initialize a development environment with Git repository, pre-commit hook, .gitignore, and .editorconfig.'
+---
+
 # 開發環境初始化的步驟如下：
 
 ## 1. 初始化 Git 儲存庫
 
-在終端機中，進入專案目錄，執行以下指令：
+在終端機中，進入專案目錄 (${workspaceFolder})，執行以下指令：
 
 ```zsh
 git init
@@ -20,13 +25,13 @@ git init
 
 ## 4. 新增 .editorconfig 檔案
 
-在專案根目錄新增 `.editorconfig` 檔案，並加入以下內容以統一編碼風格：
+在 ${workspaceFolderBasename} 目錄下新增 `.editorconfig` 檔案，並加入以下內容以統一編碼風格：
 
 ```editorconfig
 root = true
 
 [*]
-indent_style = tab
+indent_style = space
 indent_size = 4
 end_of_line = lf
 charset = utf-8

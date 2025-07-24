@@ -1,20 +1,39 @@
+---
+mode:  agent
+description: 'Create a pre-commit hook to enforce code quality standards before committing changes.'
+---
+
 # 建立 Pre-commit Hook 步驟如下：
 
-## 1. 建立 pre-commit hook
+## 1. 使用 uv 安裝 pre-commit
 
-- 安裝 pre-commit 工具（全域或專案內）
+- 檢查是否已安裝 uv
 
-```bash
-pip install pre-commit
+```zsh
+if ! uv --version &> /dev/null; then
+	echo "uv 未安裝，請先安裝 uv。"
+	# 安裝 uv 工具（若尚未安裝）
+	# macOS and Linux
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+
+	# Windows
+	# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+fi
 ```
 
-- (可選) 安裝到專案 requirements.txt
+- 使用 uv 安裝 pre-commit
 
-```bash
-echo "pre-commit" >> requirements.txt
+```zsh
+uv add pre-commit
 ```
 
-## 2. 在專案根目錄新增 .pre-commit-config.yaml，並增加以下內容：
+- (可選) 將 pre-commit 加入專案的 uv.json
+
+```zsh
+uv link pre-commit
+```
+
+## 2. 在 ${workspaceFolderBasename} 根目錄新增 .pre-commit-config.yaml，並增加以下內容：
 
 ```yaml
 # .pre-commit-config.yaml 範例
@@ -26,7 +45,8 @@ repos:
       - id: trailing-whitespace # 移除每行結尾多餘的空白
       - id: end-of-file-fixer # 確保檔案結尾有一個換行符號
       - id: check-yaml # 驗證 YAML 格式是否正確
-      - id: check-added-large-files # 阻止加入超過預設大小（預設為 500KB）的新檔案
+      - id: check-added-large-files # 阻止加入超過預設大小的新檔案
+	  	args: ["--maxkb=5000"] # 調整為 5000KB
       - id: check-merge-conflict # 檢查是否有合併衝突的標記
 ```
 
@@ -38,7 +58,9 @@ repos:
   - repo: https://github.com/psf/black
     rev: 23.3.0
     hooks:
-      - id: black # 格式化 Python 檔案
+        - id: check-docstring-first
+        name: "Check Python docstrings"
+        args: ["--strict"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.5
     hooks:
@@ -71,20 +93,20 @@ repos:
 
 ## 4. 安裝 Git hook 到專案 .git/hooks
 
-```bash
+```zsh
 pre-commit install
 ```
 
 ## 5. 手動測試所有檔案
 
-```bash
+```zsh
 pre-commit run --all-files
 ```
 
 ## 6. 檢查目前 hook 狀態
 
-```bash
-pre-commit status
+```zsh
+uv exec pre-commit status
 ```
 
 Let's do it step by step!

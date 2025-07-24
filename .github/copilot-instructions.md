@@ -8,6 +8,10 @@ These are VS Code coding guidelines. Please also review our [Source Code Organis
 
 We use tabs, not spaces.
 
+## Shell Tool
+
+My OS uses zsh as my shell tool. So use zsh syntax for shell commands.
+
 ## Naming Conventions
 
 * Use PascalCase for `type` names
