@@ -228,15 +228,3 @@ sudo yum install ffmpeg
 # Fedora
 sudo dnf install ffmpeg
 ```
-
-### Pre-commit Setup
-
-This project uses `pre-commit` to automatically format and lint code before each commit, ensuring consistent code style.
-
-After completing the backend and frontend installations, run the following command once from the project root to set up the Git hooks:
-
-```bash
-pre-commit install
-```
-
-Now, every time you run `git commit`, `pre-commit` will automatically run `Ruff` (for Python) and `Prettier` (for frontend files) to format your code. If any files are modified by the hooks, the commit will be aborted. Simply review the changes, `git add` the modified files, and commit again.
