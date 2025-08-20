@@ -7,8 +7,7 @@ name = "MediaGrabber"
 version = "0.1.0"
 description = "A media grabbing application."
 authors = [{ name = "Brian Han", email = "sacahan@gmail.com" }]
-license = { text = "MIT" }
-readme = "README.md"
+license = "MIT"
 requires-python = ">=3.8"
 
 dependencies = [
@@ -20,3 +19,6 @@ dependencies = [
     "pre-commit",
     "ruff",
 ]
+
+[tool.setuptools]
+py-modules = ["media_grabber", "media_grabber_web"]

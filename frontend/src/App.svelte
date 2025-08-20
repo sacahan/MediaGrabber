@@ -14,8 +14,9 @@
   let clearBtnDisabled = false; // 控制清除按鈕是否禁用
   let selectedFormat = "mp3"; // YouTube 下載格式 (mp3/mp4)
 
-  // API 後端 URL。
-  const API_BASE_URL = "http://localhost:8080";
+  // API 後端 URL。使用 Vite build 時的環境變數 VITE_API_BASE_URL，否則回退到本機。
+  // 在開發模式下可以透過 .env 或 Vite 的環境變數設定（VITE_API_BASE_URL）。
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
   // 響應式變數，用於 URL 輸入框的 placeholder。
   let urlInputPlaceholder = "https://www.youtube.com/watch?v=...";

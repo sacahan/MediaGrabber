@@ -23,11 +23,36 @@ Execute the script from the project root:
 ./build_and_run.sh
 ```
 
+You can optionally pass a frontend API base URL when invoking the script, or set the `VITE_API_BASE_URL` environment variable. The value will be embedded into the frontend at build time so the produced SPA uses the correct backend endpoint.
+
+Examples:
+
+```bash
+# use default (http://localhost:8080)
+./build_and_run.sh
+
+# pass custom API base URL as first argument
+./build_and_run.sh https://api.example.com
+
+# or via environment variable
+VITE_API_BASE_URL=https://api.example.com ./build_and_run.sh
+```
+
+Notes:
+
+- The script supports `-h` / `--help` to show usage information:
+
+```bash
+./build_and_run.sh -h
+```
+
+- The `Dockerfile` frontend build stage accepts a build-arg named `VITE_API_BASE_URL` (default: `http://localhost:8080`). The `build_and_run.sh` forwards the provided value to `docker build --build-arg VITE_API_BASE_URL=...`.
+
 This script will:
 
-1.  Build the frontend and copy the static files to the `backend/static` directory.
-2.  Build a Docker image named `mediagrabber`.
-3.  Run a Docker container, mapping port `8080` to the host and mounting the `output` directory for persistent storage of downloaded files.
+1. Build the frontend and embed `VITE_API_BASE_URL` into the build.
+2. Build a Docker image named `mediagrabber`.
+3. Run a Docker container, mapping port `8080` to the host and mounting the `output` directory for persistent storage of downloaded files.
 
 The application will be accessible at `http://localhost:8080`.
 
@@ -85,7 +110,7 @@ Examples:
 
 - Download YouTube audio as MP3 to the project's root output directory
 
-```
+```bash
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://youtu.be/abc123 -f mp3 -o ../output
@@ -93,7 +118,7 @@ python media_grabber.py https://youtu.be/abc123 -f mp3 -o ../output
 
 - Download YouTube video as MP4 to a custom directory
 
-```
+```bash
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://youtu.be/abc123 -f mp4 -o /path/to/your/videos
@@ -101,7 +126,7 @@ python media_grabber.py https://youtu.be/abc123 -f mp4 -o /path/to/your/videos
 
 - Download Facebook video as MP4
 
-```
+```bash
 cd backend
 source .venv/bin/activate
 python media_grabber.py https://facebook.com/... -f mp4
@@ -115,13 +140,14 @@ python media_grabber.py https://facebook.com/... -f mp4
 - Node.js (LTS recommended) and npm
 - `ffmpeg` installed and available in PATH
 - On macOS, to suppress Tk deprecation warning set:
+
   ```bash
   export TK_SILENCE_DEPRECATION=1
   ```
 
 ### Project Structure
 
-```
+```txt
 MediaGrabber/
 ├── backend/             # Flask REST API and Python core logic
 │   ├── media_grabber.py

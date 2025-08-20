@@ -1,9 +1,13 @@
 # Stage 1: Build the Svelte frontend
 FROM node:18-alpine AS builder
+ARG VITE_API_BASE_URL="http://localhost:8080"
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm install
 COPY frontend/ ./
+# Create an env file for Vite build so import.meta.env.VITE_API_BASE_URL is available
+RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env.production
 RUN npm run build
 
 # Stage 2: Create the Python backend
