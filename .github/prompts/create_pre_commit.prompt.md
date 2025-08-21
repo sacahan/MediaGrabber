@@ -1,23 +1,24 @@
 ---
-mode:  agent
-description: 'Create a pre-commit hook to enforce code quality standards before committing changes.'
+mode: agent
+description: "Create a pre-commit hook to enforce code quality standards before committing changes."
 ---
 
-# 建立 Pre-commit Hook 步驟如下：
+# 建立 Pre-commit Hook 步驟如下
 
-## 1. 使用 uv 安裝 pre-commit
+## 1. 在專案根目錄 (${workspaceFolder}) 下使用 uv 安裝 pre-commit
 
 - 檢查是否已安裝 uv
 
 ```zsh
+# 檢查 uv 是否已安裝
 if ! uv --version &> /dev/null; then
-	echo "uv 未安裝，請先安裝 uv。"
-	# 安裝 uv 工具（若尚未安裝）
-	# macOS and Linux
-	curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo "uv 未安裝，請先安裝 uv。"
+    # 安裝 uv 工具（若尚未安裝）
+    # macOS and Linux
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-	# Windows
-	# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    # Windows
+    # powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 fi
 ```
 
@@ -33,7 +34,7 @@ uv add pre-commit
 uv link pre-commit
 ```
 
-## 2. 在 ${workspaceFolderBasename} 根目錄新增 .pre-commit-config.yaml，並增加以下內容：
+## 2. 在 ${workspaceFolderBasename} 根目錄新增 .pre-commit-config.yaml，並增加以下內容
 
 ```yaml
 # .pre-commit-config.yaml 範例
@@ -46,7 +47,7 @@ repos:
       - id: end-of-file-fixer # 確保檔案結尾有一個換行符號
       - id: check-yaml # 驗證 YAML 格式是否正確
       - id: check-added-large-files # 阻止加入超過預設大小的新檔案
-	  	args: ["--maxkb=5000"] # 調整為 5000KB
+        args: ["--maxkb=5000"] # 調整為 5000KB
       - id: check-merge-conflict # 檢查是否有合併衝突的標記
 ```
 
@@ -55,17 +56,12 @@ repos:
 ```yaml
 repos:
   # Python
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-        - id: check-docstring-first
-        name: "Check Python docstrings"
-        args: ["--strict"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.5
     hooks:
       - id: ruff-format # 格式化 Python 檔案（類似 black）
       - id: ruff # 使用 Ruff 檢查 Python 程式碼品質（如 flake8）
+        args: ["--fix"]
 
   # Java
   - repo: https://github.com/detekt/detekt

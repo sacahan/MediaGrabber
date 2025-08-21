@@ -1,9 +1,9 @@
 ---
-mode:  agent
-description: 'Initialize a development environment with Git repository, pre-commit hook, .gitignore, and .editorconfig.'
+mode: agent
+description: "Initialize a development environment with Git repository, pre-commit hook, .gitignore, and .editorconfig."
 ---
 
-# 開發環境初始化的步驟如下：
+# 開發環境初始化的步驟如下
 
 ## 1. 初始化 Git 儲存庫
 
@@ -49,7 +49,8 @@ git commit -m "Initial commit"
 ```
 
 ## 6. 設定遠端儲存庫（可選）
-```zsh
+
+````zsh
 git remote add origin <遠端儲存庫 URL>
 git branch -M main
 git push -u origin main
@@ -57,7 +58,8 @@ git push -u origin main
 git remote add origin <遠端儲存庫 URL>
 git branch -M main
 git push -u origin main
-```
+````
+
 ```zsh
 git remote add origin <遠端儲存庫 URL>
 git branch -M main

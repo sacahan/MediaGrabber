@@ -1,6 +1,6 @@
 ---
-mode: 'agent'
-description: '根據指定的程式碼檔案實作功能。'
+mode: "agent"
+description: "根據指定的程式碼檔案實作功能。"
 ---
 
 # 執行程式碼實作

@@ -1,5 +1,5 @@
 ---
-mode: 'edit'
+mode: "edit"
 ---
 
 # 中英文轉換工具

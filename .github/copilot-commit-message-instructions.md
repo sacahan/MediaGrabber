@@ -1,4 +1,3 @@
-
 # Conventional Commits 1.0.0
 
 ## Summary
@@ -11,7 +10,7 @@ This convention dovetails with SemVer, by describing the features, fixes, and br
 
 ### Commit Message Structure
 
-```
+```text
 <type>[optional scope]: <description>
 
 [optional body]
@@ -39,7 +38,7 @@ Footers other than `BREAKING CHANGE: <description>` may follow the [git trailer 
 Additional types are allowed but **have no effect on SemVer** unless `BREAKING CHANGE` is involved.
 A **scope** may be provided in parentheses to give context:
 
-```
+```text
 feat(parser): add ability to parse arrays
 ```
 
@@ -112,7 +111,7 @@ The keywords **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **S
 
 - Commits **MUST** be prefixed with a **type** (e.g. `feat`, `fix`)
 - Type **MAY** be followed by **scope** in parentheses and optional `!`
-- Type/scope prefix **MUST** be followed by `: ` and a description
+- Type/scope prefix **MUST** be followed by `:` and a description
 - The type `feat` **MUST** be used for new features
 - The type `fix` **MUST** be used for bug fixes
 - Scope **MAY** describe a code section in the format:
@@ -149,5 +148,6 @@ The keywords **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **S
 - Types other than `feat` and `fix` **MAY** be used, e.g., `docs: update ref docs`
 - Commit types and tokens (except `BREAKING CHANGE`) **MUST NOT** be case sensitive
 - `BREAKING-CHANGE` is **equivalent** to `BREAKING CHANGE`
+- 使用`繁體中文`撰寫message。
 
 ---

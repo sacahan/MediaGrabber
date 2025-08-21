@@ -1,6 +1,6 @@
 ---
-description: 'Python development standards and best practices'
-applyTo: '**/*.py'
+description: "Python development standards and best practices"
+applyTo: "**/*.py"
 ---
 
 # Guidelines for Python
@@ -70,11 +70,12 @@ applyTo: '**/*.py'
 
 ---
 
-## PYTEST
+## TEST & DEBUG
 
 - Use fixtures for test setup and dependency injection.
 - Implement parameterized tests for {{function_types}}.
 - Use monkeypatch for mocking dependencies.
+- Prefer using logger instead of print for logging.
 
 ---
 
@@ -91,3 +92,21 @@ applyTo: '**/*.py'
 - Implement test hooks for setup and teardown.
 - Use expect assertions with specific matchers.
 - Leverage parallel execution for faster test runs.
+
+## Package Management
+
+- Use `pyproject.toml` for Python dependency management.
+- Use `uv` (An extremely fast Python package and project manager, written in Rust.) as package manager (replacing pip).
+  - uv init: Create a new Python project.
+  - uv venv: Create a new virtual environment.
+  - uv add: Add a dependency to the project.
+  - uv remove: Remove a dependency from the project.
+  - uv sync: Sync the project's dependencies with the environment.
+  - uv lock: Create a lockfile for the project's dependencies.
+  - uv run: Run a command in the project environment.
+  - uv build: Build the project into distribution archives.
+- Make sure to use `uv` to manage my Python environment and dependencies.
+- Pin dependencies to specific versions to ensure reproducibility.
+- Use virtual environments (e.g., `venv`) to isolate project dependencies.
+- Regularly update dependencies and test for compatibility.
+- Document dependency management practices in the project README.

@@ -1,9 +1,9 @@
 ---
-mode:  agent
-description: 'Create a .gitignore file for the project based on programming languages and operating systems used.'
+mode: agent
+description: "Create a .gitignore file for the project based on programming languages and operating systems used."
 ---
 
-# 建立 .gitignore 的步驟如下：
+# 建立 .gitignore 的步驟如下
 
 ## 1. 詢問用戶目前專案會使用的程式語言與作業系統
 
