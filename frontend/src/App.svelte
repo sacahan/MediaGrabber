@@ -11,6 +11,7 @@
   let downloadBtnDisabled = false; // 控制下載按鈕是否禁用
   let clearBtnDisabled = false; // 控制清除按鈕是否禁用
   let selectedFormat = "mp3"; // YouTube 下載格式 (mp3/mp4)
+  let currentJobId = null; // 儲存當前下載工作的 ID，用於分享功能
 
   // API 後端 URL。使用 Vite build 時的環境變數 VITE_API_BASE_URL，否則回退到本機。
   // 在開發模式下可以透過 .env 或 Vite 的環境變數設定（VITE_API_BASE_URL）。
@@ -85,6 +86,28 @@
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(context, args), delay);
     };
+  }
+
+  /**
+   * 檢測是否為行動裝置瀏覽器
+   */
+  function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+  }
+
+  /**
+   * 檢測瀏覽器是否支援 Web Share API
+   */
+  function isWebShareSupported() {
+    return 'share' in navigator;
+  }
+
+  /**
+   * 檢測瀏覽器是否支援檔案分享
+   */
+  function isFileShareSupported() {
+    return 'share' in navigator && 'canShare' in navigator;
   }
 
   /**
@@ -215,6 +238,7 @@
             clearInterval(pollInterval);
             overlayVisible = false;
             message = "";
+            currentJobId = jobId; // 儲存 jobId 供分享功能使用
 
             const downloadLinkContainer = document.createElement("div");
             downloadLinkContainer.className = "mt-4";
@@ -222,10 +246,21 @@
             const link = document.createElement("a");
             link.href = `${API_BASE_URL}/download_file/${jobId}`;
             link.className =
-              "inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300";
+              "inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300 mr-2";
             link.textContent = "Download File";
 
             downloadLinkContainer.appendChild(link);
+
+            // 只在行動裝置上顯示分享按鈕
+            if (isMobileDevice()) {
+              const shareBtn = document.createElement("button");
+              shareBtn.className =
+                "inline-block px-6 py-3 rounded-lg font-bold text-white bg-blue-500 hover:bg-blue-600 transition duration-300";
+              shareBtn.innerHTML = '<i class="fas fa-share-alt mr-2"></i>Share';
+              shareBtn.onclick = () => handleShare(jobId);
+              downloadLinkContainer.appendChild(shareBtn);
+            }
+
             message = downloadLinkContainer.outerHTML;
 
             downloadBtnDisabled = false;
@@ -248,6 +283,49 @@
   }
 
   /**
+   * 處理檔案分享功能
+   */
+  async function handleShare(jobId) {
+    try {
+      const fileUrl = `${API_BASE_URL}/download_file/${jobId}`;
+      
+      // 檢查是否支援檔案分享
+      if (isFileShareSupported()) {
+        try {
+          // 嘗試取得檔案作為 Blob
+          const response = await fetch(fileUrl);
+          if (!response.ok) {
+            throw new Error('Failed to fetch file for sharing');
+          }
+          
+          const blob = await response.blob();
+          const file = new File([blob], `download.${selectedFormat}`, { type: blob.type });
+          
+          // 檢查是否可以分享此檔案
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: title || 'MediaGrabber Download',
+              text: 'Check out this file I downloaded with MediaGrabber!'
+            });
+            return;
+          }
+        } catch (error) {
+          console.warn('File sharing failed, falling back to URL sharing:', error);
+        }
+      }
+      
+      // 回退到 LINE 分享連結
+      const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(fileUrl)}`;
+      window.open(lineShareUrl, '_blank');
+      
+    } catch (error) {
+      console.error('Share failed:', error);
+      message = `分享失敗: ${error.message}`;
+    }
+  }
+
+  /**
    * 處理清除按鈕點擊事件。
    */
   function handleClear() {
@@ -259,6 +337,7 @@
     overlayVisible = false;
     downloadBtnDisabled = false;
     clearBtnDisabled = false;
+    currentJobId = null; // 重置當前工作 ID
     if (activeTab === "youtube") {
       selectedFormat = "mp3";
     }
