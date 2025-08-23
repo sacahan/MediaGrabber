@@ -12,6 +12,8 @@
   let clearBtnDisabled = false; // 控制清除按鈕是否禁用
   let selectedFormat = "mp3"; // YouTube 下載格式 (mp3/mp4)
   let currentJobId = null; // 儲存當前下載工作的 ID，用於分享功能
+  let downloadFileUrl = null; // 下載檔案 URL (用來在 template 中顯示按鈕)
+  let showDownloadButtons = false; // 是否顯示下載/分享按鈕區塊
 
   // API 後端 URL。使用 Vite build 時的環境變數 VITE_API_BASE_URL，否則回退到本機。
   // 在開發模式下可以透過 .env 或 Vite 的環境變數設定（VITE_API_BASE_URL）。
@@ -92,22 +94,26 @@
    * 檢測是否為行動裝置瀏覽器
    */
   function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-           (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+    );
   }
 
   /**
    * 檢測瀏覽器是否支援 Web Share API
    */
   function isWebShareSupported() {
-    return 'share' in navigator;
+    return "share" in navigator;
   }
 
   /**
    * 檢測瀏覽器是否支援檔案分享
    */
   function isFileShareSupported() {
-    return 'share' in navigator && 'canShare' in navigator;
+    return "share" in navigator && "canShare" in navigator;
   }
 
   /**
@@ -184,6 +190,9 @@
     downloadProgress = 0;
     overlayTitle = "Downloading...";
     overlayVisible = true;
+    // 隱藏任何先前的下載/分享按鈕
+    showDownloadButtons = false;
+    downloadFileUrl = null;
 
     try {
       const response = await fetch(`${API_BASE_URL}/download_start`, {
@@ -237,31 +246,12 @@
           if (statusData.status === "done") {
             clearInterval(pollInterval);
             overlayVisible = false;
-            message = "";
+            // 設定下載檔案 URL 與顯示按鈕的狀態，改由 Svelte template 來渲染按鈕
             currentJobId = jobId; // 儲存 jobId 供分享功能使用
-
-            const downloadLinkContainer = document.createElement("div");
-            downloadLinkContainer.className = "mt-4";
-
-            const link = document.createElement("a");
-            link.href = `${API_BASE_URL}/download_file/${jobId}`;
-            link.className =
-              "inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300 mr-2";
-            link.textContent = "Download File";
-
-            downloadLinkContainer.appendChild(link);
-
-            // 只在行動裝置上顯示分享按鈕
-            if (isMobileDevice()) {
-              const shareBtn = document.createElement("button");
-              shareBtn.className =
-                "inline-block px-6 py-3 rounded-lg font-bold text-white bg-blue-500 hover:bg-blue-600 transition duration-300";
-              shareBtn.innerHTML = '<i class="fas fa-share-alt mr-2"></i>Share';
-              shareBtn.onclick = () => handleShare(jobId);
-              downloadLinkContainer.appendChild(shareBtn);
-            }
-
-            message = downloadLinkContainer.outerHTML;
+            downloadFileUrl = `${API_BASE_URL}/download_file/${jobId}`;
+            showDownloadButtons = true;
+            // 設定顯示訊息 (包含 "Download File" 以觸發 success 類別)
+            message = "Download File Ready";
 
             downloadBtnDisabled = false;
             clearBtnDisabled = false;
@@ -277,6 +267,8 @@
     } catch (error) {
       message = `Download failed: ${error.message}`;
       overlayVisible = false;
+      showDownloadButtons = false;
+      downloadFileUrl = null;
       downloadBtnDisabled = false;
       clearBtnDisabled = false;
     }
@@ -288,39 +280,43 @@
   async function handleShare(jobId) {
     try {
       const fileUrl = `${API_BASE_URL}/download_file/${jobId}`;
-      
+
       // 檢查是否支援檔案分享
       if (isFileShareSupported()) {
         try {
           // 嘗試取得檔案作為 Blob
           const response = await fetch(fileUrl);
           if (!response.ok) {
-            throw new Error('Failed to fetch file for sharing');
+            throw new Error("Failed to fetch file for sharing");
           }
-          
+
           const blob = await response.blob();
-          const file = new File([blob], `download.${selectedFormat}`, { type: blob.type });
-          
+          const file = new File([blob], `download.${selectedFormat}`, {
+            type: blob.type,
+          });
+
           // 檢查是否可以分享此檔案
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
-              title: title || 'MediaGrabber Download',
-              text: 'Check out this file I downloaded with MediaGrabber!'
+              title: title || "MediaGrabber Download",
+              text: "Check out this file I downloaded with MediaGrabber!",
             });
             return;
           }
         } catch (error) {
-          console.warn('File sharing failed, falling back to URL sharing:', error);
+          console.warn(
+            "File sharing failed, falling back to URL sharing:",
+            error
+          );
         }
       }
-      
+
       // 回退到 LINE 分享連結
       const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(fileUrl)}`;
-      window.open(lineShareUrl, '_blank');
-      
+      window.open(lineShareUrl, "_blank");
     } catch (error) {
-      console.error('Share failed:', error);
+      console.error("Share failed:", error);
       message = `分享失敗: ${error.message}`;
     }
   }
@@ -338,6 +334,8 @@
     downloadBtnDisabled = false;
     clearBtnDisabled = false;
     currentJobId = null; // 重置當前工作 ID
+    showDownloadButtons = false;
+    downloadFileUrl = null;
     if (activeTab === "youtube") {
       selectedFormat = "mp3";
     }
@@ -519,6 +517,27 @@
             {#if message}
               <div class="{currentMessageClasses} mt-5 text-center">
                 {@html message}
+              </div>
+            {/if}
+
+            {#if showDownloadButtons}
+              <div class="mt-4 flex items-center justify-center space-x-3">
+                <a
+                  href={downloadFileUrl}
+                  class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300"
+                  >
+                  <i class="fas fa-download mr-2"></i>Download
+                </a>
+
+                {#if isMobileDevice()}
+                  <button
+                    type="button"
+                    class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-blue-500 hover:bg-blue-600 transition duration-300"
+                    on:click={() => handleShare(currentJobId)}
+                  >
+                    <i class="fas fa-share-alt mr-2"></i>Share
+                  </button>
+                {/if}
               </div>
             {/if}
           </div>
