@@ -2,33 +2,31 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Backend 偵錯",
+      "name": "Backend Debugger",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
-      "args": [
-        "src.api.main:app",
-        "--reload",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8010",
+      "program": "${workspaceFolder}/backend/media_grabber_web.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "FLASK_ENV": "development",
+        "PYTHONPATH": "${workspaceFolder}/backend"
+      }
+    },
+    {
+      "name": "Frontend Debugger",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
       ],
-      "jinja": true
-    },
-    {
-      "name": "youtube_metadata_tool 偵錯",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "src.trailtag.tools.youtube_metadata_tool",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "place_geocode_tool 偵錯",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "src.trailtag.tools.place_geocode_tool",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      }
     }
   ]
 }

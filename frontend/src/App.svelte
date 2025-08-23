@@ -1,8 +1,6 @@
 <script>
-
-
   // Svelte 響應式狀態定義
-  let activeTab =    "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
+  let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
   let url = ""; // URL 輸入框的值
   let title = ""; // 影片標題
   let thumbnail = ""; // 影片縮圖 URL
@@ -16,7 +14,8 @@
 
   // API 後端 URL。使用 Vite build 時的環境變數 VITE_API_BASE_URL，否則回退到本機。
   // 在開發模式下可以透過 .env 或 Vite 的環境變數設定（VITE_API_BASE_URL）。
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
   // 響應式變數，用於 URL 輸入框的 placeholder。
   let urlInputPlaceholder = "https://www.youtube.com/watch?v=...";
@@ -415,17 +414,21 @@
                 </h2>
               {/if}
 
-                            <div class="grid grid-cols-2 gap-4 flex justify-center">
+              <div class="grid grid-cols-2 gap-4 flex justify-center">
                 <button
                   type="submit"
-                  class="{buttonClasses.primary} {downloadBtnDisabled ? buttonClasses.disabled : ''}"
+                  class="{buttonClasses.primary} {downloadBtnDisabled
+                    ? buttonClasses.disabled
+                    : ''}"
                   disabled={downloadBtnDisabled}
                 >
                   <i class="fas fa-download mr-2"></i> Download
                 </button>
                 <button
                   type="button"
-                  class="{buttonClasses.secondary} {clearBtnDisabled ? buttonClasses.disabled : ''}"
+                  class="{buttonClasses.secondary} {clearBtnDisabled
+                    ? buttonClasses.disabled
+                    : ''}"
                   on:click={handleClear}
                   disabled={clearBtnDisabled}
                 >
