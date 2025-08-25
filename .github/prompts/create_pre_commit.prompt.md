@@ -5,33 +5,39 @@ description: "Create a pre-commit hook to enforce code quality standards before 
 
 # 建立 Pre-commit Hook 步驟如下
 
-## 1. 在專案根目錄 (${workspaceFolder}) 下使用 uv 安裝 pre-commit
+## 1. 在專案根目錄 (${workspaceFolder}) 下使用系統/global 的 pip 安裝 pre-commit
 
-- 檢查是否已安裝 uv
+- 檢查是否已安裝 pip（使用系統 / global）
 
 ```zsh
-# 檢查 uv 是否已安裝
-if ! uv --version &> /dev/null; then
-    echo "uv 未安裝，請先安裝 uv。"
-    # 安裝 uv 工具（若尚未安裝）
-    # macOS and Linux
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    # Windows
-    # powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# 檢查系統是否有 pip（global）
+if ! command -v pip &> /dev/null; then
+    echo "pip 未安裝，請先安裝系統的 pip（global）。"
+    exit 1
 fi
 ```
 
-- 使用 uv 安裝 pre-commit
+- (可選) 使用系統（global）pip 安裝 pre-commit
 
 ```zsh
-uv add pre-commit
+# 檢查是否已安裝 pre-commit（使用系統 / global）
+
+if ! command -v pre-commit &> /dev/null; then
+  echo "pre-commit 未安裝，將使用 pip 安裝 pre-commit。"
+  # 將 pre-commit 安裝到系統環境（global）
+  # macOS / Linux（如需安裝到系統環境可能需要 sudo）
+  pip install pre-commit
+  pre-commit --version
+else
+  echo "pre-commit 已安裝，跳過安裝步驟。"
+fi
 ```
 
-- (可選) 將 pre-commit 加入專案的 uv.json
+- 使用系統/global 的 pre-commit 來安裝 hook 並執行
 
 ```zsh
-uv link pre-commit
+# 安裝 Git hook（會使用系統的 pre-commit 執行）
+pre-commit install
 ```
 
 ## 2. 在 ${workspaceFolderBasename} 根目錄新增 .pre-commit-config.yaml，並增加以下內容
@@ -87,22 +93,10 @@ repos:
       - id: dotnet-analyzers # 使用 .NET 分析器檢查 C# 程式碼品質
 ```
 
-## 4. 安裝 Git hook 到專案 .git/hooks
-
-```zsh
-pre-commit install
-```
-
-## 5. 手動測試所有檔案
+## 4. 手動測試所有檔案
 
 ```zsh
 pre-commit run --all-files
-```
-
-## 6. 檢查目前 hook 狀態
-
-```zsh
-uv exec pre-commit status
 ```
 
 Let's do it step by step!

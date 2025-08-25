@@ -1,7 +1,7 @@
 ---
 mode:
-    - edit
-    - agent
+  - edit
+  - agent
 ---
 
 # 程式碼註解工具

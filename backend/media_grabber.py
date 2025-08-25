@@ -59,9 +59,13 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
                     # Initialize tqdm progress bar on first download status update.
-                    progress["pbar"] = tqdm(total=total, unit="B", unit_scale=True, desc="Downloading")
+                    progress["pbar"] = tqdm(
+                        total=total, unit="B", unit_scale=True, desc="Downloading"
+                    )
                 # Update the progress bar with the difference in downloaded bytes.
-                progress["pbar"].update(d.get("downloaded_bytes", 0) - progress["pbar"].n)
+                progress["pbar"].update(
+                    d.get("downloaded_bytes", 0) - progress["pbar"].n
+                )
             elif status == "finished":
                 # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
@@ -119,9 +123,13 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if progress["pbar"] is None:
                     # Initialize tqdm progress bar on first download status update.
-                    progress["pbar"] = tqdm(total=total, unit="B", unit_scale=True, desc="Downloading")
+                    progress["pbar"] = tqdm(
+                        total=total, unit="B", unit_scale=True, desc="Downloading"
+                    )
                 # Update the progress bar with the difference in downloaded bytes.
-                progress["pbar"].update(d.get("downloaded_bytes", 0) - progress["pbar"].n)
+                progress["pbar"].update(
+                    d.get("downloaded_bytes", 0) - progress["pbar"].n
+                )
             elif status == "finished":
                 # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
@@ -167,7 +175,9 @@ def main():
     the appropriate download function based on user's format choice.
     Includes robust error handling for common yt-dlp issues.
     """
-    parser = argparse.ArgumentParser(description="MediaGrabber CLI: download media as MP3 or MP4")
+    parser = argparse.ArgumentParser(
+        description="MediaGrabber CLI: download media as MP3 or MP4"
+    )
     parser.add_argument(
         "url",
         help="Video URL (e.g., YouTube, Facebook, Instagram)",

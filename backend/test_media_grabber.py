@@ -61,7 +61,9 @@ class MediaGrabberTests(unittest.TestCase):
     def test_prepare_download_unsafe_title(self, mock_youtube_dl):
         # Mock the behavior of YoutubeDL
         mock_instance = MagicMock()
-        mock_instance.extract_info.return_value = {"title": r"A Title With/\Invalid Chars"}
+        mock_instance.extract_info.return_value = {
+            "title": r"A Title With/\Invalid Chars"
+        }
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
 
         # Call the function
@@ -75,7 +77,10 @@ class MediaGrabberTests(unittest.TestCase):
     def test_prepare_download_long_and_unsafe_title(self, mock_youtube_dl):
         # Mock the behavior of YoutubeDL
         mock_instance = MagicMock()
-        long_unsafe_title = "This is a very long title with some /\\:?*invalid characters and it should " "be truncated to 50 characters."
+        long_unsafe_title = (
+            "This is a very long title with some /\\:?*invalid characters and it should "
+            "be truncated to 50 characters."
+        )
         mock_instance.extract_info.return_value = {"title": long_unsafe_title}
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
 
@@ -130,30 +135,48 @@ class MediaGrabberTests(unittest.TestCase):
     def test_download_video_info(self, mock_youtube_dl):
         # Mock the behavior of YoutubeDL
         mock_instance = MagicMock()
-        mock_instance.extract_info.return_value = {"id": "12345", "title": "Test Video", "uploader": "Test Uploader", "duration": 300}
+        mock_instance.extract_info.return_value = {
+            "id": "12345",
+            "title": "Test Video",
+            "uploader": "Test Uploader",
+            "duration": 300,
+        }
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
 
         # Call the function to test
-        video_info = _prepare_download("https://www.youtube.com/watch?v=12345", Path(self.test_dir))
+        video_info = _prepare_download(
+            "https://www.youtube.com/watch?v=12345", Path(self.test_dir)
+        )
         print(video_info)
 
         # Assertions
         self.assertIn("Test Video", video_info)
-        mock_instance.extract_info.assert_called_with("https://www.youtube.com/watch?v=12345", download=False)
+        mock_instance.extract_info.assert_called_with(
+            "https://www.youtube.com/watch?v=12345", download=False
+        )
 
     @patch("media_grabber.YoutubeDL")
     def test_download_real_video_info(self, mock_youtube_dl):
         # Mock the behavior of YoutubeDL
         mock_instance = MagicMock()
-        mock_instance.extract_info.return_value = {"id": "yBLI-Hxg0AQ", "title": "Real Test Video", "uploader": "Real Uploader", "duration": 600}
+        mock_instance.extract_info.return_value = {
+            "id": "yBLI-Hxg0AQ",
+            "title": "Real Test Video",
+            "uploader": "Real Uploader",
+            "duration": 600,
+        }
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
 
         # Call the function to test
-        video_info = _prepare_download("https://www.youtube.com/watch?v=yBLI-Hxg0AQ", Path(self.test_dir))
+        video_info = _prepare_download(
+            "https://www.youtube.com/watch?v=yBLI-Hxg0AQ", Path(self.test_dir)
+        )
 
         # Assertions
         self.assertIn("Real Test Video", video_info)
-        mock_instance.extract_info.assert_called_with("https://www.youtube.com/watch?v=yBLI-Hxg0AQ", download=False)
+        mock_instance.extract_info.assert_called_with(
+            "https://www.youtube.com/watch?v=yBLI-Hxg0AQ", download=False
+        )
 
 
 if __name__ == "__main__":

@@ -38,10 +38,14 @@ if __name__ != "__main__":
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
     # Make sure that other loggers also use the gunicorn handler
-    logging.basicConfig(handlers=gunicorn_logger.handlers, level=gunicorn_logger.level, force=True)
+    logging.basicConfig(
+        handlers=gunicorn_logger.handlers, level=gunicorn_logger.level, force=True
+    )
 else:
     # When running directly for development, log to the console.
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     app.logger.setLevel(logging.INFO)
 
 # Dictionary to store the progress and status of each download job.
@@ -79,7 +83,11 @@ def get_metadata():
         return jsonify({"title": info.get("title"), "thumbnail": info.get("thumbnail")})
     except ExtractorError:
         # Catch specific yt-dlp error for invalid or unsupported URLs during metadata extraction.
-        return jsonify({"error": "Could not extract video information. The URL might be invalid or unsupported."}), 500
+        return jsonify(
+            {
+                "error": "Could not extract video information. The URL might be invalid or unsupported."
+            }
+        ), 500
     except Exception as e:
         # Catch any other unexpected errors during metadata extraction.
         logging.error(f"Error fetching metadata for {url}: {e}", exc_info=True)
@@ -94,7 +102,9 @@ def do_download(job_id: str, url: str, source: str, format: str = "mp3"):
     tmpdir = tempfile.mkdtemp()  # Create a temporary directory for the download.
     state = PROGRESS_STATE.get(job_id, {})  # Get the current state for this job.
     state["stage"] = "downloading"  # Initialize the stage to 'downloading'.
-    logging.info(f"[{job_id}] Starting download for {url} (source: {source}, format: {format})")
+    logging.info(
+        f"[{job_id}] Starting download for {url} (source: {source}, format: {format})"
+    )
 
     def hook(d):
         """
@@ -111,8 +121,12 @@ def do_download(job_id: str, url: str, source: str, format: str = "mp3"):
             # When yt-dlp reports 'finished', it means the download is complete,
             # but post-processing (like transcoding) might still be ongoing.
             state["progress"] = 100
-            state["stage"] = "transcoding"  # Update stage to 'transcoding' to reflect post-processing.
-            logging.info(f"[{job_id}] yt-dlp finished downloading. Starting post-processing.")
+            state["stage"] = (
+                "transcoding"  # Update stage to 'transcoding' to reflect post-processing.
+            )
+            logging.info(
+                f"[{job_id}] yt-dlp finished downloading. Starting post-processing."
+            )
 
     try:
         # Call the appropriate download function based on the source and format.
@@ -133,7 +147,9 @@ def do_download(job_id: str, url: str, source: str, format: str = "mp3"):
             size = info_dict.get("filesize") or info_dict.get("filesize_approx", 0)
             if size and size > 50 * 1024 * 1024:  # 50 MB limit
                 shutil.rmtree(tmpdir)  # Clean up temporary directory.
-                logging.warning(f"[{job_id}] Video size ({size} bytes) exceeds 50MB limit.")
+                logging.warning(
+                    f"[{job_id}] Video size ({size} bytes) exceeds 50MB limit."
+                )
                 state.update(status="error", error="Video size exceeds 50MB limit")
                 return
             download_video_file(url, Path(tmpdir), progress_hook=hook)
@@ -144,7 +160,9 @@ def do_download(job_id: str, url: str, source: str, format: str = "mp3"):
         files = list(Path(tmpdir).glob(pattern))
         if not files:
             shutil.rmtree(tmpdir)
-            logging.error(f"[{job_id}] Post-processing failed: {pattern} file not found.")
+            logging.error(
+                f"[{job_id}] Post-processing failed: {pattern} file not found."
+            )
             state.update(status="error", error=f"{pattern} file not found")
             return
 
@@ -204,7 +222,9 @@ def download_start():
     PROGRESS_STATE[job_id] = {"progress": 0, "status": "in_progress", "stage": "queued"}
     logging.info(f"[{job_id}] Queuing download for {url}")
     # Start the download in a new daemon thread so it doesn't block the Flask app.
-    threading.Thread(target=do_download, args=(job_id, url, source, format), daemon=True).start()
+    threading.Thread(
+        target=do_download, args=(job_id, url, source, format), daemon=True
+    ).start()
     return jsonify({"job_id": job_id})
 
 
@@ -258,7 +278,9 @@ def download_file(job_id):
     headers = {
         # Set Content-Disposition to prompt download with the correct filename.
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
-        "Content-Length": str(Path(file_path).stat().st_size),  # Provide file size for progress indication.
+        "Content-Length": str(
+            Path(file_path).stat().st_size
+        ),  # Provide file size for progress indication.
     }
     # Stream the file as a Flask Response.
     return Response(stream_with_context(generate()), mimetype=mimetype, headers=headers)
