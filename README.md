@@ -13,56 +13,49 @@ This project can be run in two modes: **Docker** for a production-like container
 
 ### Docker Mode
 
-The `build_and_run.sh` script provides a convenient way to build and run the application using Docker. This is the recommended approach for a production-like environment.
+This project supports multi-platform Docker build and push. For production-like deployment, it is recommended to use `scripts/deploy.sh`.
 
-#### Build and Run
+#### Multi-platform Build & Push
 
-Execute the script from the project root:
+Run `scripts/deploy.sh` to:
 
-```bash
-./build_and_run.sh
-```
+1. Create/use a buildx builder for multi-platform support (`linux/amd64, linux/arm64`).
+2. Pass API base url to frontend build via `--build-arg VITE_API_BASE_URL=...` (default: `https://media.brianhan.cc`, customizable).
+3. Build and push the image to Docker Hub (no local image retained).
 
-You can optionally pass a frontend API base URL when invoking the script, or set the `VITE_API_BASE_URL` environment variable. The value will be embedded into the frontend at build time so the produced SPA uses the correct backend endpoint.
-
-Examples:
+Example:
 
 ```bash
-# use default (http://localhost:8080)
-./build_and_run.sh
-
-# pass custom API base URL as first argument
-./build_and_run.sh https://api.example.com
-
-# or via environment variable
-VITE_API_BASE_URL=https://api.example.com ./build_and_run.sh
+cd scripts
+./deploy.sh # use default API base url
+./deploy.sh https://api.example.com # specify API base url
 ```
 
-Notes:
+`deploy.sh` automatically passes `VITE_API_BASE_URL` as a build-arg to Docker build, ensuring the frontend SPA connects to the correct endpoint.
 
-- The script supports `-h` / `--help` to show usage information:
+After push, the image will be available at `sacahan/media-grabber:latest` on Docker Hub.
 
-```bash
-./build_and_run.sh -h
-```
-
-- The `Dockerfile` frontend build stage accepts a build-arg named `VITE_API_BASE_URL` (default: `http://localhost:8080`). The `build_and_run.sh` forwards the provided value to `docker build --build-arg VITE_API_BASE_URL=...`.
-
-This script will:
-
-1. Build the frontend and embed `VITE_API_BASE_URL` into the build.
-2. Build a Docker image named `mediagrabber`.
-3. Run a Docker container, mapping port `8080` to the host and mounting the `output` directory for persistent storage of downloaded files.
-
-The application will be accessible at `http://localhost:8080`.
-
-#### Stop and Remove
-
-To stop and remove the Docker container, use the following command:
+#### Stop and Remove Container
 
 ```bash
 docker stop mediagrabber && docker rm mediagrabber
 ```
+
+---
+
+#### Notes
+
+- `scripts/deploy.sh` is mainly for multi-platform build and push. For local testing, use `build_and_run.sh`.
+- To customize buildx builder name, platforms, or other parameters, edit `deploy.sh` directly.
+
+### Scripts
+
+The project includes a `scripts/` directory:
+
+- `deploy.sh`: Multi-platform Docker build and push, supports build-arg for API base url.
+- `startup.sh`: For service startup or environment initialization (customize as needed).
+
+It is recommended to use scripts in this directory for all deployment and build operations.
 
 ### Development Mode
 
@@ -168,6 +161,7 @@ MediaGrabber/
 │   ├── tailwind.config.js # Tailwind CSS configuration
 │   └── vite.config.js
 ├── output/              # Default directory for downloaded media files
+├── scripts/             # 部署與啟動相關腳本 (deploy.sh, startup.sh)
 ├── .gitignore
 ├── LICENSE
 └── README.md
