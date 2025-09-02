@@ -25,6 +25,6 @@ docker build --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL_INPUT" -t $IMAGE_
 
 # Run the Docker container
 echo "Running Docker container..."
-docker run -d -p 8080:8080 --name $CONTAINER_NAME $IMAGE_NAME
+docker run -d --restart unless-stopped -p 8080:8080 --name $CONTAINER_NAME $IMAGE_NAME
 
 echo "Application is running on http://localhost:8080"
