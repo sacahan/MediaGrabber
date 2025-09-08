@@ -36,7 +36,9 @@ def _prepare_download(url: str, output_dir: Path):
     return str(output_dir / f"{basename}.%(ext)s")
 
 
-def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
+def download_and_extract_audio(
+    url: str, output_dir: Path, progress_hook=None, cookiefile: str = None
+):
     """Download a YouTube video and extract audio as MP3 using yt-dlp and ffmpeg.
 
     Args:
@@ -44,6 +46,7 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
         output_dir (Path): The directory where the audio file will be saved.
         progress_hook (callable, optional): A callback function to report
             download progress. Used by the web GUI to update progress status.
+        cookiefile (str, optional): Path to a cookie file.
     """
     # Determine the output template for the filename, ensuring it's safe and
     # truncated.
@@ -95,12 +98,16 @@ def download_and_extract_audio(url: str, output_dir: Path, progress_hook=None):
             }
         ],
     }
+    if cookiefile:
+        ydl_opts["cookiefile"] = cookiefile
 
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
 
-def download_video_file(url: str, output_dir: Path, progress_hook=None):
+def download_video_file(
+    url: str, output_dir: Path, progress_hook=None, cookiefile: str = None
+):
     """Download a video (video + audio) and merge into MP4 using yt-dlp and ffmpeg.
 
     Args:
@@ -108,6 +115,7 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
         output_dir (Path): The directory where the video file will be saved.
         progress_hook (callable, optional): A callback function to report
             download progress. Used by the web GUI to update progress status.
+        cookiefile (str, optional): Path to a cookie file.
     """
     # Determine the output template for the filename, ensuring it's safe and
     # truncated.
@@ -163,6 +171,8 @@ def download_video_file(url: str, output_dir: Path, progress_hook=None):
             "level=4.0:ref=2:8x8dct=0:weightp=1:subme=6:vbv-bufsize=25000:vbv-maxrate=20000:rc-lookahead=30",
         ],
     }
+    if cookiefile:
+        ydl_opts["cookiefile"] = cookiefile
 
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
@@ -195,15 +205,20 @@ def main():
         default="../output",  # Changed default output to a common 'output' directory outside backend
         help="Output directory (default: ../output)",
     )
+    parser.add_argument(
+        "-c",
+        "--cookie",
+        help="Cookie file to use for authentication",
+    )
     args = parser.parse_args()
 
     outdir = Path(args.output)
     try:
         if args.format == "mp3":
-            download_and_extract_audio(args.url, outdir)
+            download_and_extract_audio(args.url, outdir, cookiefile=args.cookie)
             label = "MP3"
         else:
-            download_video_file(args.url, outdir)
+            download_video_file(args.url, outdir, cookiefile=args.cookie)
             label = "MP4"
         print(f"All done! {label} files are in: {outdir.resolve()}")
     # Catch specific yt-dlp errors to provide user-friendly messages.

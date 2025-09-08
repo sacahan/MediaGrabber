@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediaGrabber 現代化 UI 設計</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      /* 為了在行動裝置上隱藏捲軸，但保留捲動功能 */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+      }
+      .tab-active {
+        --tw-text-opacity: 1;
+        color: rgb(37 99 235 / var(--tw-text-opacity));
+        border-bottom-width: 2px;
+        --tw-border-opacity: 1;
+        border-color: rgb(37 99 235 / var(--tw-border-opacity));
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center min-h-screen p-4 transition-colors duration-500"
+  >
+    <div class="absolute top-4 right-4">
+      <button
+        id="theme-toggle"
+        class="p-2 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+      >
+        <svg
+          id="theme-icon-light"
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+          ></path>
+        </svg>
+        <svg
+          id="theme-icon-dark"
+          class="w-6 h-6 hidden"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+          ></path>
+        </svg>
+      </button>
+    </div>
+
+    <div
+      class="w-full max-w-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden"
+    >
+      <div class="p-6 sm:p-10">
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <h1
+            class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white"
+          >
+            MediaGrabber
+          </h1>
+          <p class="text-gray-500 dark:text-gray-400 mt-2">
+            輕鬆下載您喜愛的社群媒體內容
+          </p>
+        </div>
+
+        <!-- Tabs for platforms -->
+        <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <nav
+            class="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto no-scrollbar"
+            aria-label="Tabs"
+          >
+            <button
+              class="tab-item tab-active group inline-flex items-center py-4 px-1 border-b-2 font-semibold text-sm"
+              data-platform="Instagram"
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 012.153 2.153c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-2.153 2.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.012-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-2.153-2.153c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 012.153-2.153c.636-.247 1.363-.416 2.427.465C9.53 2.013 9.884 2 12.315 2zM12 7a5 5 0 100 10 5 5 0 000-10zm0-2a7 7 0 110 14 7 7 0 010-14zm4.5-1.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Instagram
+            </button>
+            <button
+              class="tab-item text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-gray-300 dark:hover:border-gray-500 group inline-flex items-center py-4 px-1 border-b-2 border-transparent font-semibold text-sm"
+              data-platform="YouTube"
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.42 4.814a2.506 2.506 0 0 1-1.768 1.768c-1.594.42-7.812.42-7.812.42s-6.218 0-7.812-.42a2.506 2.506 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.42-4.814a2.506 2.506 0 0 1 1.768-1.768C5.782 5 12 5 12 5s6.218 0 7.812.418ZM15.197 12 10 14.885V9.115L15.197 12Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              YouTube
+            </button>
+            <button
+              class="tab-item text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-gray-300 dark:hover:border-gray-500 group inline-flex items-center py-4 px-1 border-b-2 border-transparent font-semibold text-sm"
+              data-platform="Facebook"
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              Facebook
+            </button>
+            <button
+              class="tab-item text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-gray-300 dark:hover:border-gray-500 group inline-flex items-center py-4 px-1 border-b-2 border-transparent font-semibold text-sm"
+              data-platform="Threads"
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M11.082 8.533a3.463 3.463 0 1 0 3.462 3.462 3.463 3.463 0 0 0-3.462-3.462Zm1.56-4.416a.4.4 0 0 0-.784.175 6.463 6.463 0 0 1-2.924 11.835.4.4 0 0 0 .19.762 7.265 7.265 0 0 0 10.11-2.223.4.4 0 0 0-.583-.583 6.466 6.466 0 0 1-6.009-9.966Z M18.91 15.48a3.463 3.463 0 1 0-3.463-3.463 3.463 3.463 0 0 0 3.463 3.463Zm-1.561 4.415a.4.4 0 0 0 .784-.175 6.463 6.463 0 0 1 2.924-11.835.4.4 0 0 0-.19-.762 7.265 7.265 0 0 0-10.11 2.223.4.4 0 0 0 .583.583 6.466 6.466 0 0 1 6.009 9.966Z"
+                />
+              </svg>
+              Threads
+            </button>
+          </nav>
+        </div>
+
+        <!-- Form section -->
+        <form action="#" method="POST">
+          <div class="space-y-6">
+            <div>
+              <label
+                for="url-input"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                id="url-label"
+                >Instagram URL</label
+              >
+              <input
+                type="url"
+                name="url-input"
+                id="url-input"
+                class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="https://www.instagram.com/p/..."
+              />
+            </div>
+            <div>
+              <label
+                for="cookie-input"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >Cookie (選填)</label
+              >
+              <textarea
+                name="cookie-input"
+                id="cookie-input"
+                rows="3"
+                class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder='[{"domain": ".instagram.com", ...}]'
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              type="submit"
+              class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform active:scale-95"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                ></path>
+              </svg>
+              下載
+            </button>
+            <button
+              type="reset"
+              class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-base font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform active:scale-95"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                ></path>
+              </svg>
+              清除
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="text-center pt-8 pb-4 px-4">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        © 2025 MediaGrabber. 由 [您的名字或團隊名稱] 建立。
+      </p>
+    </footer>
+
+    <script>
+      // --- 互動功能 JavaScript ---
+
+      // 1. 切換平台分頁
+      const tabs = document.querySelectorAll(".tab-item");
+      const urlLabel = document.getElementById("url-label");
+      const urlInput = document.getElementById("url-input");
+
+      const platformPlaceholders = {
+        Instagram: "https://www.instagram.com/p/...",
+        YouTube: "https://www.youtube.com/watch?v=...",
+        Facebook: "https://www.facebook.com/user/videos/...",
+        Threads: "https://www.threads.net/@user/post/...",
+      };
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          // 移除所有分頁的 active 狀態
+          tabs.forEach((t) =>
+            t.classList.remove(
+              "tab-active",
+              "text-gray-500",
+              "dark:text-gray-400",
+              "hover:text-blue-600",
+              "dark:hover:text-blue-400",
+            ),
+          );
+          tabs.forEach((t) => {
+            t.classList.remove("tab-active");
+            t.classList.add(
+              "text-gray-500",
+              "dark:text-gray-400",
+              "hover:text-blue-600",
+              "dark:hover:text-blue-400",
+            );
+          });
+
+          // 為點擊的分頁添加 active 狀態
+          tab.classList.add("tab-active");
+          tab.classList.remove("text-gray-500", "dark:text-gray-400");
+
+          // 更新 URL 輸入框的標籤和佔位符
+          const platform = tab.dataset.platform;
+          urlLabel.textContent = `${platform} URL`;
+          urlInput.placeholder = platformPlaceholders[platform] || "";
+        });
+      });
+
+      // 2. 深色/淺色模式切換
+      const themeToggle = document.getElementById("theme-toggle");
+      const lightIcon = document.getElementById("theme-icon-light");
+      const darkIcon = document.getElementById("theme-icon-dark");
+
+      // 檢查使用者系統偏好或 localStorage
+      if (
+        localStorage.getItem("theme") === "dark" ||
+        (!("theme" in localStorage) &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+        lightIcon.classList.add("hidden");
+        darkIcon.classList.remove("hidden");
+      } else {
+        document.documentElement.classList.remove("dark");
+        lightIcon.classList.remove("hidden");
+        darkIcon.classList.add("hidden");
+      }
+
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        lightIcon.classList.toggle("hidden");
+        darkIcon.classList.toggle("hidden");
+      });
+    </script>
+  </body>
+</html>

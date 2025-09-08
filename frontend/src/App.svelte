@@ -1,188 +1,146 @@
+<!--
+  Refactored Svelte component based on the new prototype.html design.
+  This component integrates the modern UI with the existing Svelte logic for state management and API communication.
+-->
 <script>
-  // Svelte 響應式狀態定義
-  let activeTab = "youtube"; // 當前選中的分頁 (youtube, facebook, instagram)
-  let url = ""; // URL 輸入框的值
-  let title = ""; // 影片標題
-  let thumbnail = ""; // 影片縮圖 URL
-  let message = ""; // 顯示給使用者的訊息 (例如錯誤訊息或下載完成提示)
-  let downloadProgress = 0; // 下載進度 (0-100)
-  let overlayVisible = false; // 控制下載遮罩的顯示/隱藏
-  let overlayTitle = "Downloading..."; // 遮罩上顯示的標題 (下載中/轉碼中)
-  let downloadBtnDisabled = false; // 控制下載按鈕是否禁用
-  let clearBtnDisabled = false; // 控制清除按鈕是否禁用
-  let selectedFormat = "mp3"; // YouTube 下載格式 (mp3/mp4)
-  let currentJobId = null; // 儲存當前下載工作的 ID，用於分享功能
-  let downloadFileUrl = null; // 下載檔案 URL (用來在 template 中顯示按鈕)
-  let showDownloadButtons = false; // 是否顯示下載/分享按鈕區塊
+  import { onMount } from "svelte";
 
-  // API 後端 URL。使用 Vite build 時的環境變數 VITE_API_BASE_URL，否則回退到本機。
-  // 在開發模式下可以透過 .env 或 Vite 的環境變數設定（VITE_API_BASE_URL）。
+  // --- State Management ---
+  let activeTab = "instagram"; // Default active tab
+  let url = "";
+  let title = "";
+  let thumbnail = "";
+  let message = "";
+  let downloadProgress = 0;
+  let overlayVisible = false;
+  let overlayTitle = "Downloading...";
+  let downloadBtnDisabled = false;
+  let clearBtnDisabled = false;
+  let selectedFormat = "mp4"; // Default format, will be updated by handleTabClick
+  let currentJobId = null;
+  let downloadFileUrl = null;
+  let showDownloadButtons = false;
+  let cookie = "";
+  let isDark = false;
+
+  // --- Constants ---
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-  // 響應式變數，用於 URL 輸入框的 placeholder。
-  let urlInputPlaceholder = "https://www.youtube.com/watch?v=...";
-
-  // Tailwind CSS 樣式類別定義 (這些類別現在應該由 CDN 提供)
-  let activeTabClasses = {
-    active:
-      "flex items-center justify-center bg-blue-600 text-white font-semibold px-4 py-2 rounded-md transition duration-300 ease-in-out",
-    inactive:
-      "flex items-center justify-center bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition duration-300 ease-in-out",
+  const platforms = {
+    instagram: {
+      name: "Instagram",
+      placeholder: "https://www.instagram.com/p/...",
+      format: "mp4",
+      icon: `<path fill-rule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 012.153 2.153c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-2.153 2.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.012-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-2.153-2.153c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 012.153-2.153c.636-.247 1.363.416 2.427.465C9.53 2.013 9.884 2 12.315 2zM12 7a5 5 0 100 10 5 5 0 000-10zm0-2a7 7 0 110 14 7 7 0 010-14zm4.5-1.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clip-rule="evenodd"></path>`,
+    },
+    youtube: {
+      name: "YouTube",
+      placeholder: "https://www.youtube.com/watch?v=...",
+      format: "mp3", // Default to mp3 for youtube
+      icon: `<path fill-rule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.42 4.814a2.506 2.506 0 0 1-1.768 1.768c-1.594.42-7.812.42-7.812.42s-6.218 0-7.812-.42a2.506 2.506 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.42-4.814a2.506 2.506 0 0 1 1.768-1.768C5.782 5 12 5 12 5s6.218 0 7.812.418ZM15.197 12 10 14.885V9.115L15.197 12Z" clip-rule="evenodd" />`,
+    },
+    facebook: {
+      name: "Facebook",
+      placeholder: "https://www.facebook.com/user/videos/...",
+      format: "mp4",
+      icon: `<path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12Z" clip-rule="evenodd" />`,
+    },
+    threads: {
+      name: "Threads",
+      placeholder: "https://www.threads.net/@user/post/...",
+      format: "mp4",
+      icon: `<path d="M11.082 8.533a3.463 3.463 0 1 0 3.462 3.462 3.463 3.463 0 0 0-3.462-3.462Zm1.56-4.416a.4.4 0 0 0-.784.175 6.463 6.463 0 0 1-2.924 11.835.4.4 0 0 0 .19.762 7.265 7.265 0 0 0 10.11-2.223.4.4 0 0 0-.583-.583 6.466 6.466 0 0 1-6.009-9.966Z M18.91 15.48a3.463 3.463 0 1 0-3.463-3.463 3.463 3.463 0 0 0 3.463 3.463Zm-1.561 4.415a.4.4 0 0 0 .784-.175 6.463 6.463 0 0 1 2.924-11.835.4.4 0 0 0-.19-.762 7.265 7.265 0 0 0-10.11 2.223.4.4 0 0 0 .583.583 6.466 6.466 0 0 1 6.009 9.966Z" />`,
+    },
   };
 
-  let buttonClasses = {
-    primary:
-      "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300",
-    secondary:
-      "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg w-full transition duration-300",
-    disabled: "opacity-50 cursor-not-allowed",
-  };
+  // --- Lifecycle ---
+  onMount(() => {
+    // Initialize theme based on user preference
+    if (
+      localStorage.getItem("theme") === "dark" ||
+      (!("theme" in localStorage) &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      document.documentElement.classList.add("dark");
+      isDark = true;
+    } else {
+      document.documentElement.classList.remove("dark");
+      isDark = false;
+    }
+  });
 
-  let messageClasses = {
-    success:
-      "bg-green-100 text-green-800 border border-green-300 p-4 rounded-md",
-    error: "bg-red-100 text-red-800 border border-red-300 p-4 rounded-md",
-    default: "bg-gray-100 text-gray-800 border border-gray-300 p-4 rounded-md",
-  };
+  // --- Functions ---
+  function toggleTheme() {
+    isDark = document.documentElement.classList.toggle("dark");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }
 
-  // 根據下載狀態動態設置 message 的 class
-  $: currentMessageClasses = message.includes("Error")
-    ? messageClasses.error
-    : message.includes("Download File")
-      ? messageClasses.success
-      : messageClasses.default;
-
-  /**
-   * 處理分頁切換的邏輯。
-   * @param {string} tabKey - 被點擊的分頁鍵 (e.g., 'youtube', 'facebook', 'instagram').
-   */
   function handleTabClick(tabKey) {
     if (activeTab === tabKey) return;
-
     activeTab = tabKey;
+    selectedFormat = platforms[tabKey].format;
+    handleClear(); // Clear all fields when switching tabs
+  }
+
+  function handleClear() {
     url = "";
     title = "";
     thumbnail = "";
     message = "";
+    cookie = "";
     downloadProgress = 0;
     overlayVisible = false;
-
-    if (tabKey === "youtube") {
-      urlInputPlaceholder = "https://www.youtube.com/watch?v=...";
-      selectedFormat = "mp3"; // YouTube 預設 MP3
-    } else if (tabKey === "facebook") {
-      urlInputPlaceholder = "https://www.facebook.com/...";
-      selectedFormat = "mp4"; // Facebook 預設 MP4
-    } else if (tabKey === "instagram") {
-      urlInputPlaceholder = "https://www.instagram.com/...";
-      selectedFormat = "mp4"; // Instagram 預設 MP4
-    }
+    downloadBtnDisabled = false;
+    clearBtnDisabled = false;
+    currentJobId = null;
+    showDownloadButtons = false;
+    downloadFileUrl = null;
   }
 
-  // 防抖函數
-  function debounce(func, delay) {
+  const debounce = (func, delay) => {
     let timeout;
-    return function (...args) {
-      const context = this;
+    return (...args) => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
+      timeout = setTimeout(() => func(...args), delay);
     };
-  }
+  };
 
-  /**
-   * 檢測是否為行動裝置瀏覽器
-   */
-  function isMobileDevice() {
-    return (
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-      ) ||
-      (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-    );
-  }
-
-  /**
-   * 檢測瀏覽器是否支援 Web Share API
-   */
-  function isWebShareSupported() {
-    return "share" in navigator;
-  }
-
-  /**
-   * 檢測瀏覽器是否支援檔案分享
-   */
-  function isFileShareSupported() {
-    return "share" in navigator && "canShare" in navigator;
-  }
-
-  /**
-   * 處理 URL 輸入框的輸入事件，用於獲取影片的 metadata。
-   */
   async function handleUrlInputLogic() {
+    if (!url.trim()) return;
+
     message = "";
     title = "";
     thumbnail = "";
+    showDownloadButtons = false;
 
-    const val = url.trim();
-    let cleanUrl = val;
-    let showMeta = false;
+    try {
+      const response = await fetch(`${API_BASE_URL}/metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), cookie: cookie }),
+      });
 
-    if (activeTab === "youtube") {
-      const m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-      if (m) {
-        cleanUrl = "https://www.youtube.com/watch?v=" + m[1];
-        showMeta = true;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch metadata.");
       }
-    } else if (activeTab === "facebook") {
-      if (val.includes("facebook.com") || val.includes("fb.watch")) {
-        showMeta = true;
-      }
-    } else if (activeTab === "instagram") {
-      if (val.includes("instagram.com")) {
-        showMeta = true;
-      }
-    }
 
-    if (showMeta) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/metadata`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: cleanUrl }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to fetch metadata.");
-        }
-
-        const data = await response.json();
-        title = data.title || "";
-        thumbnail = data.thumbnail || "";
-      } catch (error) {
-        console.error("Error fetching metadata:", error);
-        message = `Error fetching metadata: ${error.message}`;
-        title = "";
-        thumbnail = "";
-      }
+      const data = await response.json();
+      title = data.title || "";
+      thumbnail = data.thumbnail || "";
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+      message = `Error: ${error.message}`;
+      title = "";
+      thumbnail = "";
     }
   }
 
   const handleUrlInput = debounce(handleUrlInputLogic, 500);
 
-  /**
-   * 處理下載按鈕點擊事件。
-   */
   async function handleDownload() {
-    const rawUrl = url.trim();
-    if (!rawUrl) return;
-
-    let sendUrl = rawUrl;
-    if (activeTab === "youtube") {
-      const m2 = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-      if (m2) sendUrl = "https://www.youtube.com/watch?v=" + m2[1];
-    }
+    if (!url.trim()) return;
 
     downloadBtnDisabled = true;
     clearBtnDisabled = true;
@@ -190,7 +148,6 @@
     downloadProgress = 0;
     overlayTitle = "Downloading...";
     overlayVisible = true;
-    // 隱藏任何先前的下載/分享按鈕
     showDownloadButtons = false;
     downloadFileUrl = null;
 
@@ -199,9 +156,10 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: sendUrl,
+          url: url.trim(),
           source: activeTab,
           format: selectedFormat,
+          cookie: cookie,
         }),
       });
 
@@ -212,12 +170,11 @@
 
       const data = await response.json();
       const jobId = data.job_id;
+      currentJobId = jobId;
 
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await fetch(
-            `${API_BASE_URL}/progress/${jobId}`
-          );
+          const statusResponse = await fetch(`${API_BASE_URL}/progress/${jobId}`);
           if (!statusResponse.ok) {
             const errorData = await statusResponse.json();
             throw new Error(errorData.error || "Failed to get progress.");
@@ -234,38 +191,27 @@
           }
 
           downloadProgress = statusData.progress || 0;
-
-          if (statusData.stage === "transcoding") {
-            overlayTitle = "Transcoding...";
-          } else if (statusData.stage === "downloading") {
-            overlayTitle = "Downloading...";
-          } else {
-            overlayTitle = "Processing...";
-          }
+          overlayTitle = `${statusData.stage.charAt(0).toUpperCase() + statusData.stage.slice(1)}...`;
 
           if (statusData.status === "done") {
             clearInterval(pollInterval);
             overlayVisible = false;
-            // 設定下載檔案 URL 與顯示按鈕的狀態，改由 Svelte template 來渲染按鈕
-            currentJobId = jobId; // 儲存 jobId 供分享功能使用
             downloadFileUrl = `${API_BASE_URL}/download_file/${jobId}`;
             showDownloadButtons = true;
-            // 設定顯示訊息 (包含 "Download File" 以觸發 success 類別)
-            message = "Download File Ready";
-
+            message = "Download complete!";
             downloadBtnDisabled = false;
             clearBtnDisabled = false;
           }
         } catch (error) {
-          message = `Download failed: ${error.message}`;
+          message = `Error: ${error.message}`;
           clearInterval(pollInterval);
           overlayVisible = false;
           downloadBtnDisabled = false;
           clearBtnDisabled = false;
         }
-      }, 500);
+      }, 1000);
     } catch (error) {
-      message = `Download failed: ${error.message}`;
+      message = `Error: ${error.message}`;
       overlayVisible = false;
       showDownloadButtons = false;
       downloadFileUrl = null;
@@ -273,281 +219,244 @@
       clearBtnDisabled = false;
     }
   }
-
-  /**
-   * 處理檔案分享功能
-   */
-  async function handleShare(jobId) {
-    try {
-      const fileUrl = `${API_BASE_URL}/download_file/${jobId}`;
-
-      // 檢查是否支援檔案分享
-      if (isFileShareSupported()) {
-        try {
-          // 嘗試取得檔案作為 Blob
-          const response = await fetch(fileUrl);
-          if (!response.ok) {
-            throw new Error("Failed to fetch file for sharing");
-          }
-
-          const blob = await response.blob();
-          const file = new File([blob], `download.${selectedFormat}`, {
-            type: blob.type,
-          });
-
-          // 檢查是否可以分享此檔案
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: title || "MediaGrabber Download",
-              text: "Check out this file I downloaded with MediaGrabber!",
-            });
-            return;
-          }
-        } catch (error) {
-          console.warn(
-            "File sharing failed, falling back to URL sharing:",
-            error
-          );
-        }
-      }
-
-      // 回退到 LINE 分享連結
-      const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(fileUrl)}`;
-      window.open(lineShareUrl, "_blank");
-    } catch (error) {
-      console.error("Share failed:", error);
-      message = `分享失敗: ${error.message}`;
-    }
-  }
-
-  /**
-   * 處理清除按鈕點擊事件。
-   */
-  function handleClear() {
-    url = "";
-    title = "";
-    thumbnail = "";
-    message = "";
-    downloadProgress = 0;
-    overlayVisible = false;
-    downloadBtnDisabled = false;
-    clearBtnDisabled = false;
-    currentJobId = null; // 重置當前工作 ID
-    showDownloadButtons = false;
-    downloadFileUrl = null;
-    if (activeTab === "youtube") {
-      selectedFormat = "mp3";
-    }
-  }
 </script>
 
-<main>
+<div
+  class="bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center min-h-screen p-4 transition-colors duration-500 font-sans"
+>
+  <!-- Theme Toggle Button -->
+  <div class="absolute top-4 right-4">
+    <button
+      on:click={toggleTheme}
+      class="p-2 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+      aria-label="Toggle theme"
+    >
+      <svg
+        class:hidden={isDark}
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        ></path>
+      </svg>
+      <svg
+        class:hidden={!isDark}
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+        ></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Main Card -->
+  <div
+    class="w-full max-w-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden"
+  >
+    <div class="p-6 sm:p-10">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white">
+          MediaGrabber
+        </h1>
+        <p class="text-gray-500 dark:text-gray-400 mt-2">
+          輕鬆下載您喜愛的社群媒體內容
+        </p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav
+          class="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto no-scrollbar"
+          aria-label="Tabs"
+        >
+          {#each Object.entries(platforms) as [key, platform] (key)}
+            <button
+              on:click={() => handleTabClick(key)}
+              class="group inline-flex items-center py-4 px-1 border-b-2 font-semibold text-sm transition-colors duration-200"
+              class:tab-active={activeTab === key}
+              class:text-gray-500={activeTab !== key}
+              class:dark:text-gray-400={activeTab !== key}
+              class:hover:text-blue-600={activeTab !== key}
+              class:dark:hover:text-blue-400={activeTab !== key}
+              class:hover:border-gray-300={activeTab !== key}
+              class:dark:hover:border-gray-500={activeTab !== key}
+              class:border-transparent={activeTab !== key}
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                {@html platform.icon}
+              </svg>
+              {platform.name}
+            </button>
+          {/each}
+        </nav>
+      </div>
+
+      <!-- Form -->
+      <form on:submit|preventDefault={handleDownload}>
+        <div class="space-y-6">
+          <!-- URL Input -->
+          <div>
+            <label
+              for="url-input"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              {platforms[activeTab].name} URL
+            </label>
+            <input
+              type="url"
+              id="url-input"
+              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+              bind:value={url}
+              on:input={handleUrlInput}
+              placeholder={platforms[activeTab].placeholder}
+            />
+          </div>
+
+          <!-- Cookie Input -->
+          <div>
+            <label
+              for="cookie-input"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              Cookie (選填)
+            </label>
+            <textarea
+              id="cookie-input"
+              rows="3"
+              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder='[{"domain": ".instagram.com", ...}]'
+              bind:value={cookie}
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Result Display -->
+        {#if thumbnail}
+          <div class="mt-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 flex items-center space-x-4">
+            <img src={thumbnail} alt="Video Thumbnail" class="w-24 h-24 object-cover rounded-md shadow-md" />
+            <h3 class="font-semibold text-gray-800 dark:text-gray-200 text-left">{title}</h3>
+          </div>
+        {/if}
+
+        <!-- Action Buttons -->
+        <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            type="submit"
+            class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform active:scale-95 disabled:opacity-50"
+            disabled={downloadBtnDisabled || !url.trim()}
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            下載
+          </button>
+          <button
+            type="button"
+            on:click={handleClear}
+            class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-base font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform active:scale-95 disabled:opacity-50"
+            disabled={clearBtnDisabled}
+          >
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            清除
+          </button>
+        </div>
+      </form>
+
+       <!-- Message & Download Area -->
+      {#if message}
+        <div class="mt-6 p-4 rounded-lg text-center"
+             class:bg-green-100={showDownloadButtons} class:text-green-800={showDownloadButtons}
+             class:bg-red-100={message.toLowerCase().includes('error')} class:text-red-800={message.toLowerCase().includes('error')}>
+          <p>{message}</p>
+          {#if showDownloadButtons}
+            <div class="mt-4 flex items-center justify-center space-x-3">
+              <a
+                href={downloadFileUrl}
+                class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300"
+                > <i class="fas fa-download mr-2"></i>Download File
+              </a>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center pt-8 pb-4 px-4">
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      © 2025 MediaGrabber. All Rights Reserved.
+    </p>
+  </footer>
+
+  <!-- Progress Overlay -->
   {#if overlayVisible}
     <div
       class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
     >
       <div
-        class="bg-white rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full"
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full"
       >
-        <h2 class="text-3xl font-semibold text-gray-800 mb-6">
+        <h2 class="text-3xl font-semibold text-gray-800 dark:text-white mb-6">
           {overlayTitle}
         </h2>
         <div class="w-full mb-4">
-          <div class="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
+          <div class="w-full h-3 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
             <div
               class="h-full bg-blue-500 transition-all duration-500 ease-in-out"
               style="width: {downloadProgress}%;"
             ></div>
           </div>
         </div>
-        <p class="text-lg font-medium text-gray-700 mt-2">
+        <p class="text-lg font-medium text-gray-700 dark:text-gray-200 mt-2">
           {downloadProgress}%
         </p>
       </div>
     </div>
   {/if}
-
-  <section
-    class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center p-4"
-  >
-    <div class="container mx-auto text-center">
-      <h1 class="text-4xl font-bold text-white mb-8">MediaGrabber</h1>
-      <div class="flex justify-center">
-        <div class="w-full max-w-3xl">
-          <div class="bg-white rounded-lg shadow-xl p-6">
-            <nav
-              class="flex flex-wrap gap-4 mb-6 justify-center"
-              aria-label="Platform tabs"
-            >
-              <button
-                on:click={() => handleTabClick("youtube")}
-                class={activeTab === "youtube"
-                  ? activeTabClasses.active
-                  : activeTabClasses.inactive}
-                role="tab"
-                aria-selected={activeTab === "youtube"}
-              >
-                <i class="fab fa-youtube mr-2"></i> YouTube
-              </button>
-              <button
-                on:click={() => handleTabClick("facebook")}
-                class={activeTab === "facebook"
-                  ? activeTabClasses.active
-                  : activeTabClasses.inactive}
-                role="tab"
-                aria-selected={activeTab === "facebook"}
-              >
-                <i class="fab fa-facebook mr-2"></i> Facebook
-              </button>
-              <button
-                on:click={() => handleTabClick("instagram")}
-                class={activeTab === "instagram"
-                  ? activeTabClasses.active
-                  : activeTabClasses.inactive}
-                role="tab"
-                aria-selected={activeTab === "instagram"}
-              >
-                <i class="fab fa-instagram mr-2"></i> Instagram
-              </button>
-            </nav>
-
-            <form on:submit|preventDefault={handleDownload} class="space-y-4">
-              <div>
-                <label
-                  for="url"
-                  class="block text-lg font-medium text-gray-700 mb-2"
-                >
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} URL
-                </label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    id="url"
-                    name="url"
-                    bind:value={url}
-                    on:input={handleUrlInput}
-                    placeholder={urlInputPlaceholder}
-                    required
-                    class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-lg"
-                  />
-                </div>
-              </div>
-
-              {#if activeTab === "youtube"}
-                <div>
-                  <p class="block text-lg font-medium text-gray-700 mb-2">
-                    Download Format
-                  </p>
-                  <div class="flex items-center space-x-4 justify-center">
-                    <label
-                      for="format-mp3"
-                      class="inline-flex items-center cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="format"
-                        value="mp3"
-                        bind:group={selectedFormat}
-                        id="format-mp3"
-                        class="form-radio accent-blue-500 h-5 w-5"
-                      />
-                      <span class="ml-2 text-gray-700">MP3 (Sound)</span>
-                    </label>
-                    <label
-                      for="format-mp4"
-                      class="inline-flex items-center cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="format"
-                        value="mp4"
-                        bind:group={selectedFormat}
-                        id="format-mp4"
-                        class="form-radio accent-blue-500 h-5 w-5"
-                      />
-                      <span class="ml-2 text-gray-700">MP4 (Video)</span>
-                    </label>
-                  </div>
-                </div>
-              {/if}
-
-              {#if thumbnail}
-                <figure
-                  class="w-full h-48 object-cover rounded-md mb-4 overflow-hidden"
-                >
-                  <img
-                    src={thumbnail}
-                    alt="Video Thumbnail"
-                    class="w-full h-full object-cover"
-                  />
-                </figure>
-              {/if}
-              {#if title}
-                <h2
-                  class="text-2xl font-semibold text-gray-800 text-center mb-4"
-                >
-                  {title}
-                </h2>
-              {/if}
-
-              <div class="grid grid-cols-2 gap-4 flex justify-center">
-                <button
-                  type="submit"
-                  class="{buttonClasses.primary} {downloadBtnDisabled
-                    ? buttonClasses.disabled
-                    : ''}"
-                  disabled={downloadBtnDisabled}
-                >
-                  <i class="fas fa-download mr-2"></i> Download
-                </button>
-                <button
-                  type="button"
-                  class="{buttonClasses.secondary} {clearBtnDisabled
-                    ? buttonClasses.disabled
-                    : ''}"
-                  on:click={handleClear}
-                  disabled={clearBtnDisabled}
-                >
-                  <i class="fas fa-trash-alt mr-2"></i> Clear
-                </button>
-              </div>
-            </form>
-
-            {#if message}
-              <div class="{currentMessageClasses} mt-5 text-center">
-                {@html message}
-              </div>
-            {/if}
-
-            {#if showDownloadButtons}
-              <div class="mt-4 flex items-center justify-center space-x-3">
-                <a
-                  href={downloadFileUrl}
-                  class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300"
-                  >
-                  <i class="fas fa-download mr-2"></i>Download
-                </a>
-
-                {#if isMobileDevice()}
-                  <button
-                    type="button"
-                    class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-blue-500 hover:bg-blue-600 transition duration-300"
-                    on:click={() => handleShare(currentJobId)}
-                  >
-                    <i class="fas fa-share-alt mr-2"></i>Share
-                  </button>
-                {/if}
-              </div>
-            {/if}
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
+</div>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :global(body) {
+    font-family: "Inter", sans-serif;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .tab-active {
+    color: rgb(37 99 235);
+    border-color: rgb(37 99 235);
+  }
+  :global(.dark) .tab-active {
+    color: rgb(96 165 250);
+    border-color: rgb(96 165 250);
+  }
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -558,27 +467,5 @@
   }
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
-  }
-  .form-radio {
-    appearance: none;
-    -webkit-appearance: none;
-    border-radius: 9999px;
-    border-width: 2px;
-    border-color: #9ca3af; /* gray-400 */
-    background-color: white;
-    transition:
-      background-color 0.2s,
-      border-color 0.2s;
-  }
-  .form-radio:checked {
-    background-color: #3b82f6; /* blue-500 */
-    border-color: #3b82f6; /* blue-500 */
-  }
-  .form-radio:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus ring */
-  }
-  .accent-blue-500 {
-    accent-color: #3b82f6; /* blue-500 */
   }
 </style>
