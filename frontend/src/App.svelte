@@ -27,6 +27,8 @@
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
+  const cookiePlaceholder = `[{"domain": ".instagram.com", ...}]`;
+
   const platforms = {
     instagram: {
       name: "Instagram",
@@ -326,13 +328,48 @@
             <input
               type="url"
               id="url-input"
-              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-gray-900 dark:text-gray-200"
               required
               bind:value={url}
               on:input={handleUrlInput}
               placeholder={platforms[activeTab].placeholder}
             />
           </div>
+
+          <!-- YouTube Format Selection -->
+          {#if activeTab === 'youtube'}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-center">
+                下載格式
+              </label>
+              <div class="flex justify-center gap-x-2 rounded-lg bg-gray-500/10 dark:bg-gray-900/50 p-1">
+                <label for="format-mp3" class="flex-1 text-center cursor-pointer px-3 py-1.5 rounded-md transition-colors text-sm font-semibold"
+                  class:bg-white={selectedFormat === 'mp3'}
+                  class:dark:bg-gray-700={selectedFormat === 'mp3'}
+                  class:shadow-sm={selectedFormat === 'mp3'}
+                  class:text-blue-600={selectedFormat === 'mp3'}
+                  class:dark:text-white={selectedFormat === 'mp3'}
+                  class:text-gray-500={selectedFormat !== 'mp3'}
+                  class:dark:text-gray-400={selectedFormat !== 'mp3'}
+                >
+                  <input type="radio" id="format-mp3" value="mp3" bind:group={selectedFormat} class="hidden">
+                  MP3 (音訊)
+                </label>
+                <label for="format-mp4" class="flex-1 text-center cursor-pointer px-3 py-1.5 rounded-md transition-colors text-sm font-semibold"
+                  class:bg-white={selectedFormat === 'mp4'}
+                  class:dark:bg-gray-700={selectedFormat === 'mp4'}
+                  class:shadow-sm={selectedFormat === 'mp4'}
+                  class:text-blue-600={selectedFormat === 'mp4'}
+                  class:dark:text-white={selectedFormat === 'mp4'}
+                  class:text-gray-500={selectedFormat !== 'mp4'}
+                  class:dark:text-gray-400={selectedFormat !== 'mp4'}
+                >
+                  <input type="radio" id="format-mp4" value="mp4" bind:group={selectedFormat} class="hidden">
+                  MP4 (影片)
+                </label>
+              </div>
+            </div>
+          {/if}
 
           <!-- Cookie Input -->
           <div>
@@ -345,8 +382,8 @@
             <textarea
               id="cookie-input"
               rows="3"
-              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder='[{"domain": ".instagram.com", ...}]'
+              class="block w-full px-4 py-3 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-gray-900 dark:text-gray-200"
+              placeholder={cookiePlaceholder}
               bind:value={cookie}
             ></textarea>
           </div>
@@ -450,12 +487,16 @@
     scrollbar-width: none; /* Firefox */
   }
   .tab-active {
-    color: rgb(37 99 235);
-    border-color: rgb(37 99 235);
+    --tw-text-opacity: 1;
+    color: rgb(37 99 235 / var(--tw-text-opacity));
+    --tw-border-opacity: 1;
+    border-color: rgb(37 99 235 / var(--tw-border-opacity));
   }
   :global(.dark) .tab-active {
-    color: rgb(96 165 250);
-    border-color: rgb(96 165 250);
+    --tw-text-opacity: 1;
+    color: rgb(96 165 250 / var(--tw-text-opacity));
+    --tw-border-opacity: 1;
+    border-color: rgb(96 165 250 / var(--tw-border-opacity));
   }
   @keyframes fadeIn {
     from {
