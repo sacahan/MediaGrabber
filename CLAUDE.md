@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MediaGrabber is a media downloader application that supports YouTube (MP3/MP4), Facebook, Instagram, and Threads videos. It consists of:
+MediaGrabber is a media downloader application that supports YouTube (MP3/MP4), Facebook, Instagram, and X/Twitter videos. It consists of:
 
 - **Backend**: Python Flask REST API using `yt-dlp` for media downloading and `ffmpeg` for transcoding
 - **Frontend**: Svelte 5 SPA with Tailwind CSS for the web interface
@@ -23,7 +23,7 @@ MediaGrabber is a media downloader application that supports YouTube (MP3/MP4), 
   - **Playlist Endpoints**: `/playlist/metadata`, `/playlist/download_start`, `/playlist/progress/<job_id>`, `/playlist/download_file/<job_id>`
   - Job-based async download system using threading with `PROGRESS_STATE` and `PLAYLIST_STATE` dicts
   - Supports cookie authentication (JSON format from browser → Netscape format conversion)
-  - 50MB size limit for Facebook/Instagram/Threads downloads
+  - 50MB size limit for Facebook/Instagram downloads (Twitter/X has no size limit)
   - Playlist downloads: Sequential with configurable delay (default 3s) to avoid YouTube rate limiting
   - ZIP packaging for multiple MP3/MP4 files from playlists
 - `test_media_grabber.py`: Unit tests using unittest and mocking
@@ -32,11 +32,12 @@ MediaGrabber is a media downloader application that supports YouTube (MP3/MP4), 
 ### Frontend Structure (`frontend/`)
 
 - `src/App.svelte`: Main Svelte 5 component
-  - Tab-based UI for different platforms (Instagram, YouTube, Facebook, Threads)
+  - Tab-based UI for different platforms (Instagram, YouTube, Facebook, X/Twitter)
   - YouTube format selector (MP3/MP4)
   - **Playlist Detection**: Automatically detects YouTube playlist URLs (contains `list=` parameter)
   - **Playlist UI**: Video count, preview list, format selector, delay configuration
   - Metadata preview with thumbnail
+  - **Loading Indicator**: Shows spinner and "載入中..." message while fetching metadata
   - Progress overlay with download stages (downloading → transcoding → completed)
   - **Playlist Progress**: Shows per-video and overall progress, failed videos list
   - Dark mode support with localStorage persistence
@@ -228,7 +229,8 @@ docker stop mediagrabber && docker rm mediagrabber
 
 ### Size Limits
 
-- Facebook/Instagram/Threads: 50MB limit (checked before download)
+- Facebook/Instagram: 50MB limit (checked before download)
+- Twitter/X: No size limit
 - YouTube (single video): No size limit
 - YouTube (playlist): 50 video limit per request (configurable in code)
 
@@ -278,6 +280,22 @@ docker stop mediagrabber && docker rm mediagrabber
 
 - `deploy.sh`: Multi-platform Docker build and push with custom API URL support
 - `startup.sh`: Service startup helper (customize as needed)
+
+## Platform Support & Limitations
+
+### Supported Platforms
+
+- **YouTube**: MP3/MP4 downloads, playlist support with video selection
+- **Facebook**: MP4 downloads (50MB limit)
+- **Instagram**: MP4 downloads (50MB limit)
+- **X/Twitter**: MP4 downloads (no size limit)
+
+### Unsupported Platforms
+
+- **Threads**: Currently NOT supported by yt-dlp (as of 2025-09-26)
+  - GitHub issue: <https://github.com/yt-dlp/yt-dlp/issues/7523>
+  - Reason: Requires dedicated extractor implementation for Threads CDN
+  - Workaround: Users can use curl with specific headers to download directly from CDN
 
 ## Additional Notes
 

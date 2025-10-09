@@ -5,7 +5,8 @@ post_slug: mediagrabber-zh
 microsoft_alias: sacahan
 featured_image: https://github.com/user-attachments/assets/99ef6eaf-a6a2-43ef-b922-67d481daf400
 categories: ["工具", "多平台", "下載器"]
-tags: ["YouTube", "Facebook", "Instagram", "Docker", "Svelte", "Python"]
+tags:
+  ["YouTube", "Facebook", "Instagram", "Twitter", "Docker", "Svelte", "Python"]
 ai_note: 部分內容由 AI 協助翻譯
 summary: MediaGrabber 是一款支援多平台的 Python 下載工具，支援 CLI 與 Web GUI，並可透過 Docker 快速部署。
 post_date: 2025-08-31
@@ -15,8 +16,9 @@ post_date: 2025-08-31
 
 一款簡單的 Python 下載器：
 
-- **YouTube → MP3/MP4**，支援命令列與網頁介面（可選格式）
+- **YouTube → MP3/MP4**，支援命令列與網頁介面（可選格式、播放列表下載）
 - **Facebook → MP4**、**Instagram → MP4**，支援網頁介面（單檔 50MB 限制）
+- **X/Twitter → MP4**，支援網頁介面（無大小限制）
 
 ![demo](https://github.com/user-attachments/assets/99ef6eaf-a6a2-43ef-b922-67d481daf400)
 

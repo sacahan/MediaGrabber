@@ -212,7 +212,14 @@ def do_download(
                 )
                 pattern = "*.mp4"
                 mimetype = "video/mp4"
-        else:  # facebook, instagram, threads
+        elif source == "twitter":
+            # Twitter/X.com downloads - no size limit (videos are usually small)
+            download_video_file(
+                url, Path(tmpdir), progress_hook=hook, cookiefile=cookie_file_path
+            )
+            pattern = "*.mp4"
+            mimetype = "video/mp4"
+        else:  # facebook, instagram
             # For metadata extraction, do NOT specify format to avoid validation errors
             ydl_opts = {
                 "quiet": True,
@@ -225,7 +232,7 @@ def do_download(
             with YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=False)
             size = info_dict.get("filesize") or info_dict.get("filesize_approx", 0)
-            if size and size > 50 * 1024 * 1024:  # 50 MB limit
+            if size and size > 50 * 1024 * 1024:  # 50 MB limit for Facebook/Instagram
                 shutil.rmtree(tmpdir)
                 logging.warning(
                     f"[{job_id}] Video size ({size} bytes) exceeds 50MB limit."

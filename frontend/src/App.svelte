@@ -35,6 +35,7 @@
   let downloadDelay = 3; // Default delay between downloads
   let failedVideos = [];
   let selectedVideos = []; // Array of selected video IDs
+  let loadingMetadata = false; // Loading state for metadata fetching
 
   // --- Constants ---
   const API_BASE_URL =
@@ -61,11 +62,11 @@
       format: "mp4",
       icon: `<path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12Z" clip-rule="evenodd" />`,
     },
-    threads: {
-      name: "Threads",
-      placeholder: "https://www.threads.net/@user/post/...",
+    twitter: {
+      name: "X (Twitter)",
+      placeholder: "https://x.com/user/status/... 或 https://twitter.com/...",
       format: "mp4",
-      icon: `<path d="M11.082 8.533a3.463 3.463 0 1 0 3.462 3.462 3.463 3.463 0 0 0-3.462-3.462Zm1.56-4.416a.4.4 0 0 0-.784.175 6.463 6.463 0 0 1-2.924 11.835.4.4 0 0 0 .19.762 7.265 7.265 0 0 0 10.11-2.223.4.4 0 0 0-.583-.583 6.466 6.466 0 0 1-6.009-9.966Z M18.91 15.48a3.463 3.463 0 1 0-3.463-3.463 3.463 3.463 0 0 0 3.463 3.463Zm-1.561 4.415a.4.4 0 0 0 .784-.175 6.463 6.463 0 0 1 2.924-11.835.4.4 0 0 0-.19-.762 7.265 7.265 0 0 0-10.11 2.223.4.4 0 0 0 .583.583 6.466 6.466 0 0 1 6.009 9.966Z" />`,
+      icon: `<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>`,
     },
   };
 
@@ -111,6 +112,7 @@
     currentJobId = null;
     showDownloadButtons = false;
     downloadFileUrl = null;
+    loadingMetadata = false;
     // Clear playlist state
     isPlaylist = false;
     playlistMetadata = null;
@@ -160,6 +162,7 @@
   async function handleUrlInputLogic() {
     if (!url.trim()) return;
 
+    loadingMetadata = true;
     message = "";
     title = "";
     thumbnail = "";
@@ -171,6 +174,7 @@
     if (activeTab === "youtube" && isPlaylistUrl(url.trim())) {
       isPlaylist = true;
       await fetchPlaylistMetadata();
+      loadingMetadata = false;
       return;
     }
 
@@ -194,6 +198,8 @@
       message = `Error: ${error.message}`;
       title = "";
       thumbnail = "";
+    } finally {
+      loadingMetadata = false;
     }
   }
 
@@ -543,6 +549,16 @@
               on:input={handleUrlInput}
               placeholder={platforms[activeTab].placeholder}
             />
+            <!-- Loading Metadata Indicator -->
+            {#if loadingMetadata}
+              <div class="mt-2 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>載入中...</span>
+              </div>
+            {/if}
           </div>
 
           <!-- YouTube Format Selection -->
