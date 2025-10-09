@@ -290,6 +290,17 @@ docker stop mediagrabber && docker rm mediagrabber
 - **Instagram**: MP4 downloads (50MB limit)
 - **X/Twitter**: MP4 downloads (no size limit)
 
+### Known Issues
+
+- **Facebook Reels**: "Cannot parse data" error due to frequent Facebook structure changes
+  - **Cause**: Facebook frequently updates website structure, breaking yt-dlp's extractor
+  - **Solutions**:
+    1. Use Cookie authentication (export Facebook cookies via browser extension)
+    2. Wait for yt-dlp updates (currently using nightly build 2025.10.01.232815)
+    3. Try regular Facebook videos (non-Reels) instead
+  - **Error Handling**: Backend returns specific error message with suggestions in Chinese
+  - **Related Issues**: [yt-dlp#7901](https://github.com/yt-dlp/yt-dlp/issues/7901), [#8145](https://github.com/yt-dlp/yt-dlp/issues/8145)
+
 ### Unsupported Platforms
 
 - **Threads**: Currently NOT supported by yt-dlp (as of 2025-09-26)
@@ -299,7 +310,8 @@ docker stop mediagrabber && docker rm mediagrabber
 
 ## Additional Notes
 
-- Python version requirement: ≥3.8 (project uses 3.10 in Docker)
+- Python version requirement: ≥3.9 (required by latest yt-dlp, project uses 3.10+ in Docker)
+- yt-dlp version: Using nightly build (2025.10.01.232815.dev0) for latest platform support
 - Node.js: Use LTS version
 - Frontend uses dark mode detection from `prefers-color-scheme`
 - Backend uses threading (not asyncio) for concurrent downloads

@@ -126,11 +126,37 @@ source .venv/bin/activate
 python media_grabber.py https://facebook.com/... -f mp4
 ```
 
+## Known Issues
+
+### Facebook Reels - "Cannot parse data" Error
+
+**Issue**: Some Facebook Reels videos may fail to download with error "Cannot parse data".
+
+**Cause**: Facebook frequently changes its website structure, which can break yt-dlp's video extraction. This is an ongoing issue with yt-dlp's Facebook extractor.
+
+**Solutions**:
+
+1. **Use Cookie Authentication**: Export your Facebook cookies and upload them in the web UI
+
+   - Use browser extension like "Get cookies.txt LOCALLY" (Chrome/Firefox)
+   - Export cookies in JSON format
+   - Upload in MediaGrabber's cookie field
+
+2. **Update yt-dlp**: We're using the latest nightly build (2025.10.01), but Facebook issues may require waiting for yt-dlp updates
+
+3. **Alternative**: Try downloading the video directly from Facebook's CDN (requires manual inspection of network requests)
+
+**Related Issues**:
+
+- yt-dlp GitHub: [#7901](https://github.com/yt-dlp/yt-dlp/issues/7901), [#8145](https://github.com/yt-dlp/yt-dlp/issues/8145)
+
+**Note**: Regular Facebook videos (non-Reels) may work better. This issue primarily affects Facebook Reels format.
+
 ## Development
 
 ### Requirements
 
-- Python 3.7 or newer
+- Python 3.9 or newer (required by latest yt-dlp)
 - Node.js (LTS recommended) and npm
 - `ffmpeg` installed and available in PATH
 - On macOS, to suppress Tk deprecation warning set:

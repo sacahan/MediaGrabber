@@ -143,7 +143,24 @@ def get_metadata():
 
         return jsonify({"title": info.get("title"), "thumbnail": info.get("thumbnail")})
     except (ExtractorError, DownloadError) as e:
+        error_msg = str(e)
         logging.warning(f"Could not extract metadata for {url}: {e}")
+
+        # Special handling for Facebook "Cannot parse data" error
+        if "facebook" in url.lower() and "Cannot parse data" in error_msg:
+            return (
+                jsonify(
+                    {
+                        "error": "無法解析 Facebook Reels 影片資料。這可能是因為：\n"
+                        "1. Facebook 已更改網頁結構，yt-dlp 尚未支援\n"
+                        "2. 該影片需要登入才能存取\n"
+                        "3. 該影片受到地區限制\n\n"
+                        "建議：請嘗試使用 Cookie 認證，或稍後再試。"
+                    }
+                ),
+                500,
+            )
+
         return (
             jsonify(
                 {
