@@ -178,6 +178,80 @@ class MediaGrabberTests(unittest.TestCase):
             "https://www.youtube.com/watch?v=yBLI-Hxg0AQ", download=False
         )
 
+    @patch("media_grabber.YoutubeDL")
+    def test_metadata_extraction_no_format_option(self, mock_youtube_dl):
+        """
+        Test that metadata extraction does NOT include 'format' option.
+        This prevents "Requested format is not available" errors.
+        Reference: https://github.com/yt-dlp/yt-dlp official examples
+        """
+        # Mock the behavior of YoutubeDL
+        mock_instance = MagicMock()
+        mock_instance.extract_info.return_value = {
+            "title": "Test Video with Restricted Formats",
+            "thumbnail": "https://example.com/thumb.jpg",
+        }
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        # Call the function
+        output_dir = Path(self.test_dir)
+        _prepare_download("https://www.youtube.com/watch?v=VeUiVCb7ZmQ", output_dir)
+
+        # Verify YoutubeDL was called
+        self.assertEqual(mock_youtube_dl.call_count, 1)
+
+        # Get the options passed to YoutubeDL
+        ydl_opts = mock_youtube_dl.call_args_list[0].args[0]
+
+        # CRITICAL: Verify 'format' is NOT in options
+        self.assertNotIn(
+            "format",
+            ydl_opts,
+            "Metadata extraction should NOT specify 'format' option to avoid validation errors",
+        )
+
+        # Verify required options are present
+        self.assertEqual(ydl_opts.get("quiet"), True)
+        self.assertEqual(ydl_opts.get("no_warnings"), True)
+        self.assertEqual(ydl_opts.get("noplaylist"), True)
+
+        # Verify extract_info was called with download=False
+        mock_instance.extract_info.assert_called_with(
+            "https://www.youtube.com/watch?v=VeUiVCb7ZmQ", download=False
+        )
+
+    @patch("media_grabber.YoutubeDL")
+    def test_playlist_url_with_single_video(self, mock_youtube_dl):
+        """
+        Test that URLs with playlist parameters still extract single video metadata.
+        Example: https://www.youtube.com/watch?v=VeUiVCb7ZmQ&list=RDVeUiVCb7ZmQ&index=1
+        """
+        # Mock the behavior of YoutubeDL
+        mock_instance = MagicMock()
+        mock_instance.extract_info.return_value = {
+            "title": "Video from Playlist",
+            "id": "VeUiVCb7ZmQ",
+        }
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        # Call the function with playlist URL
+        output_dir = Path(self.test_dir)
+        outtmpl = _prepare_download(
+            "https://www.youtube.com/watch?v=VeUiVCb7ZmQ&list=RDVeUiVCb7ZmQ&index=1",
+            output_dir,
+        )
+
+        # Verify noplaylist option prevents playlist extraction
+        ydl_opts = mock_youtube_dl.call_args_list[0].args[0]
+        self.assertEqual(
+            ydl_opts.get("noplaylist"),
+            True,
+            "Should set noplaylist=True to extract single video only",
+        )
+
+        # Verify the output template contains the video title
+        self.assertIn("Video from Playlist", outtmpl)
+
 
 if __name__ == "__main__":
     unittest.main()

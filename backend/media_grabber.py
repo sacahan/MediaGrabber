@@ -24,7 +24,13 @@ def _prepare_download(url: str, output_dir: Path):
     # 'quiet' and 'no_warnings' suppress console output from yt-dlp.
     # 'noplaylist' ensures only single video info is extracted, ignoring playlist
     # parameters.
-    meta_opts = {"quiet": True, "no_warnings": True, "noplaylist": True}
+    # IMPORTANT: Do NOT specify 'format' when using download=False
+    # This prevents yt-dlp from validating format availability
+    meta_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+    }
     with YoutubeDL(meta_opts) as ydl_meta:
         info = ydl_meta.extract_info(url, download=False)
     title = info.get("title", "")

@@ -23,6 +23,19 @@
   let cookie = "";
   let isDark = false;
 
+  // --- Playlist State ---
+  let isPlaylist = false;
+  let playlistMetadata = null;
+  let playlistJobId = null;
+  let playlistDownloading = false;
+  let playlistProgress = 0;
+  let currentVideo = null;
+  let completedVideos = 0;
+  let totalVideos = 0;
+  let downloadDelay = 3; // Default delay between downloads
+  let failedVideos = [];
+  let selectedVideos = []; // Array of selected video IDs
+
   // --- Constants ---
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -98,6 +111,42 @@
     currentJobId = null;
     showDownloadButtons = false;
     downloadFileUrl = null;
+    // Clear playlist state
+    isPlaylist = false;
+    playlistMetadata = null;
+    playlistJobId = null;
+    playlistDownloading = false;
+    playlistProgress = 0;
+    currentVideo = null;
+    completedVideos = 0;
+    totalVideos = 0;
+    failedVideos = [];
+    selectedVideos = [];
+  }
+
+  // --- Playlist Functions ---
+  function isPlaylistUrl(urlString) {
+    return urlString.includes("list=");
+  }
+
+  function toggleVideoSelection(videoId) {
+    if (selectedVideos.includes(videoId)) {
+      selectedVideos = selectedVideos.filter(id => id !== videoId);
+    } else {
+      selectedVideos = [...selectedVideos, videoId];
+    }
+  }
+
+  function toggleSelectAll() {
+    if (!playlistMetadata || !playlistMetadata.videos) return;
+
+    if (selectedVideos.length === playlistMetadata.videos.length) {
+      // Deselect all
+      selectedVideos = [];
+    } else {
+      // Select all
+      selectedVideos = playlistMetadata.videos.map(v => v.id);
+    }
   }
 
   const debounce = (func, delay) => {
@@ -115,6 +164,15 @@
     title = "";
     thumbnail = "";
     showDownloadButtons = false;
+    isPlaylist = false;
+    playlistMetadata = null;
+
+    // Check if it's a playlist URL (YouTube only)
+    if (activeTab === "youtube" && isPlaylistUrl(url.trim())) {
+      isPlaylist = true;
+      await fetchPlaylistMetadata();
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/metadata`, {
@@ -137,6 +195,157 @@
       title = "";
       thumbnail = "";
     }
+  }
+
+  async function fetchPlaylistMetadata() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/playlist/metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), cookie: cookie }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch playlist metadata.");
+      }
+
+      const data = await response.json();
+      playlistMetadata = data;
+      title = data.title || "";
+      thumbnail = data.thumbnail || "";
+
+      // Auto-select all videos by default
+      if (data.videos && data.videos.length > 0) {
+        selectedVideos = data.videos.map(v => v.id);
+      }
+    } catch (error) {
+      console.error("Error fetching playlist metadata:", error);
+      message = `Error: ${error.message}`;
+      isPlaylist = false;
+      playlistMetadata = null;
+      selectedVideos = [];
+    }
+  }
+
+  async function downloadPlaylist() {
+    if (!url.trim() || !isPlaylist) return;
+
+    // Check if any videos are selected
+    if (selectedVideos.length === 0) {
+      message = "Error: 請至少選擇一個視頻";
+      return;
+    }
+
+    downloadBtnDisabled = true;
+    clearBtnDisabled = true;
+    message = "";
+    playlistProgress = 0;
+    playlistDownloading = true;
+    overlayVisible = true;
+    overlayTitle = "正在下載播放列表...";
+    completedVideos = 0;
+    totalVideos = selectedVideos.length; // Use selected count instead of total
+    currentVideo = null;
+    failedVideos = [];
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/playlist/download_start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: url.trim(),
+          format: selectedFormat,
+          cookie: cookie,
+          delay: downloadDelay,
+          selected_videos: selectedVideos, // Send selected video IDs
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start playlist download.");
+      }
+
+      const data = await response.json();
+      playlistJobId = data.job_id;
+
+      // Poll for progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${API_BASE_URL}/playlist/progress/${playlistJobId}`);
+          if (!statusResponse.ok) {
+            const errorData = await statusResponse.json();
+            throw new Error(errorData.error || "Failed to get playlist progress.");
+          }
+          const statusData = await statusResponse.json();
+
+          if (statusData.error) {
+            message = `Error: ${statusData.error}`;
+            clearInterval(pollInterval);
+            overlayVisible = false;
+            playlistDownloading = false;
+            downloadBtnDisabled = false;
+            clearBtnDisabled = false;
+            return;
+          }
+
+          completedVideos = statusData.completed_videos || 0;
+          totalVideos = statusData.total_videos || 0;
+          currentVideo = statusData.current_video;
+          playlistProgress = statusData.overall_progress || 0;
+          failedVideos = statusData.failed_videos || [];
+
+          if (currentVideo) {
+            overlayTitle = `正在下載: ${currentVideo.title} (${completedVideos + 1}/${totalVideos})`;
+          }
+
+          if (statusData.status === "completed") {
+            clearInterval(pollInterval);
+            overlayVisible = false;
+            playlistDownloading = false;
+
+            if (failedVideos.length > 0) {
+              message = `下載完成！成功: ${completedVideos}/${totalVideos}，失敗: ${failedVideos.length} 個視頻`;
+            } else {
+              message = `下載完成！所有 ${totalVideos} 個視頻已打包為 ZIP`;
+            }
+
+            // Auto-download ZIP file
+            downloadPlaylistZip();
+
+            downloadBtnDisabled = false;
+            clearBtnDisabled = false;
+          } else if (statusData.status === "error") {
+            clearInterval(pollInterval);
+            overlayVisible = false;
+            playlistDownloading = false;
+            message = `Error: ${statusData.message || "播放列表下載失敗"}`;
+            downloadBtnDisabled = false;
+            clearBtnDisabled = false;
+          }
+        } catch (error) {
+          message = `Error: ${error.message}`;
+          clearInterval(pollInterval);
+          overlayVisible = false;
+          playlistDownloading = false;
+          downloadBtnDisabled = false;
+          clearBtnDisabled = false;
+        }
+      }, 2000); // Poll every 2 seconds
+    } catch (error) {
+      message = `Error: ${error.message}`;
+      overlayVisible = false;
+      playlistDownloading = false;
+      downloadBtnDisabled = false;
+      clearBtnDisabled = false;
+    }
+  }
+
+  function downloadPlaylistZip() {
+    if (!playlistJobId) return;
+    const zipUrl = `${API_BASE_URL}/playlist/download_file/${playlistJobId}`;
+    window.location.href = zipUrl;
   }
 
   const handleUrlInput = debounce(handleUrlInputLogic, 500);
@@ -337,7 +546,7 @@
           </div>
 
           <!-- YouTube Format Selection -->
-          {#if activeTab === 'youtube'}
+          {#if activeTab === 'youtube' && !isPlaylist}
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-center">
                 下載格式
@@ -371,6 +580,88 @@
             </div>
           {/if}
 
+          <!-- Playlist Information & Options -->
+          {#if isPlaylist && playlistMetadata}
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div class="flex items-center mb-3">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">播放列表</h3>
+              </div>
+
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                <span class="font-medium">標題:</span> {playlistMetadata.title}
+              </p>
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                <span class="font-medium">視頻數量:</span> {playlistMetadata.video_count} 個
+              </p>
+
+              <!-- Video Selection List -->
+              {#if playlistMetadata.videos && playlistMetadata.videos.length > 0}
+                <div class="mb-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      選擇視頻 ({selectedVideos.length} / {playlistMetadata.videos.length})
+                    </p>
+                    <button
+                      type="button"
+                      on:click={toggleSelectAll}
+                      class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    >
+                      {selectedVideos.length === playlistMetadata.videos.length ? '取消全選' : '全選'}
+                    </button>
+                  </div>
+                  <div class="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md p-2 space-y-1">
+                    {#each playlistMetadata.videos as video, index}
+                      <label class="flex items-start gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded cursor-pointer transition">
+                        <input
+                          type="checkbox"
+                          checked={selectedVideos.includes(video.id)}
+                          on:change={() => toggleVideoSelection(video.id)}
+                          class="mt-0.5 w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <span class="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">
+                          {index + 1}. {video.title}
+                        </span>
+                      </label>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Download Options -->
+              <div class="grid grid-cols-2 gap-3">
+                <!-- Format Selection -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    下載格式
+                  </label>
+                  <select bind:value={selectedFormat} class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-200">
+                    <option value="mp3">MP3 (音訊)</option>
+                    <option value="mp4">MP4 (影片)</option>
+                  </select>
+                </div>
+
+                <!-- Delay Configuration -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    下載間隔 (秒)
+                  </label>
+                  <input type="number" bind:value={downloadDelay} min="1" max="10"
+                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-200">
+                </div>
+              </div>
+
+              <!-- Warning for Large Playlists -->
+              {#if playlistMetadata.video_count > 20}
+                <div class="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm text-yellow-800 dark:text-yellow-200">
+                  ⚠️ 播放列表較大，下載可能需要較長時間。建議設置較長的下載間隔以避免被限流。
+                </div>
+              {/if}
+            </div>
+          {/if}
+
           <!-- Cookie Input -->
           <div>
             <label
@@ -400,12 +691,13 @@
         <!-- Action Buttons -->
         <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
-            type="submit"
+            type="button"
+            on:click={isPlaylist ? downloadPlaylist : handleDownload}
             class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform active:scale-95 disabled:opacity-50"
             disabled={downloadBtnDisabled || !url.trim()}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            下載
+            {isPlaylist ? '下載播放列表 (ZIP)' : '下載'}
           </button>
           <button
             type="button"
@@ -421,10 +713,15 @@
 
        <!-- Message & Download Area -->
       {#if message}
-        <div class="mt-6 p-4 rounded-lg text-center"
-             class:bg-green-100={showDownloadButtons} class:text-green-800={showDownloadButtons}
-             class:bg-red-100={message.toLowerCase().includes('error')} class:text-red-800={message.toLowerCase().includes('error')}>
-          <p>{message}</p>
+        <div class="mt-6 p-4 rounded-lg text-center {
+          (showDownloadButtons || (playlistDownloading === false && completedVideos > 0))
+            ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+            : message.toLowerCase().includes('error')
+            ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+            : ''
+        }">
+          <p class="font-medium">{message}</p>
+
           {#if showDownloadButtons}
             <div class="mt-4 flex items-center justify-center space-x-3">
               <a
@@ -432,6 +729,22 @@
                 class="inline-block px-6 py-3 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition duration-300"
                 > <i class="fas fa-download mr-2"></i>Download File
               </a>
+            </div>
+          {/if}
+
+          <!-- Failed Videos List -->
+          {#if failedVideos.length > 0}
+            <div class="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg text-left">
+              <p class="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                ⚠️ 下載失敗的視頻 ({failedVideos.length} 個):
+              </p>
+              <ul class="text-xs text-orange-800 dark:text-orange-200 space-y-1 max-h-32 overflow-y-auto">
+                {#each failedVideos as failed}
+                  <li class="truncate">
+                    {failed.index}. {failed.title} - {failed.error}
+                  </li>
+                {/each}
+              </ul>
             </div>
           {/if}
         </div>
@@ -453,21 +766,46 @@
       class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
     >
       <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-sm w-full"
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center animate-fade-in max-w-md w-full"
       >
-        <h2 class="text-3xl font-semibold text-gray-800 dark:text-white mb-6">
+        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6">
           {overlayTitle}
         </h2>
+
+        <!-- Playlist Progress Details -->
+        {#if playlistDownloading}
+          <div class="mb-4 text-left">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              整體進度: {completedVideos} / {totalVideos} 個視頻
+            </p>
+            {#if currentVideo}
+              <p class="text-sm text-gray-700 dark:text-gray-300 truncate">
+                正在下載: {currentVideo.title}
+              </p>
+              <div class="mt-2 w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-green-500 transition-all duration-300"
+                  style="width: {currentVideo.progress || 0}%;"
+                ></div>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                當前視頻: {currentVideo.progress || 0}%
+              </p>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Overall Progress Bar -->
         <div class="w-full mb-4">
           <div class="w-full h-3 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
             <div
               class="h-full bg-blue-500 transition-all duration-500 ease-in-out"
-              style="width: {downloadProgress}%;"
+              style="width: {playlistDownloading ? playlistProgress : downloadProgress}%;"
             ></div>
           </div>
         </div>
         <p class="text-lg font-medium text-gray-700 dark:text-gray-200 mt-2">
-          {downloadProgress}%
+          {playlistDownloading ? playlistProgress : downloadProgress}%
         </p>
       </div>
     </div>
