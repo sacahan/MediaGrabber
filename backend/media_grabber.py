@@ -103,6 +103,15 @@ def download_and_extract_audio(
                 "preferredquality": "192",
             }
         ],
+        # 解決 HTTP 403 Forbidden 錯誤
+        # 添加現代的 User-Agent 避免被 YouTube 認定為機器人
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        # 添加延遲避免頻繁請求被封
+        "socket_timeout": 30,
+        # 嘗試使用瀏覽器 Cookies（需要本地有 Chrome/Firefox）
+        "cookiesfrombrowser": ("chrome",),
+        # 跳過不可用的片段
+        "skip_unavailable_fragments": True,
     }
     if cookiefile:
         ydl_opts["cookiefile"] = cookiefile
@@ -176,6 +185,15 @@ def download_video_file(
             "-x264-params",
             "level=4.0:ref=2:8x8dct=0:weightp=1:subme=6:vbv-bufsize=25000:vbv-maxrate=20000:rc-lookahead=30",
         ],
+        # 解決 HTTP 403 Forbidden 錯誤
+        # 添加現代的 User-Agent 避免被 YouTube 認定為機器人
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        # 添加延遲避免頻繁請求被封
+        "socket_timeout": 30,
+        # 嘗試使用瀏覽器 Cookies（需要本地有 Chrome/Firefox）
+        "cookiesfrombrowser": ("chrome",),
+        # 跳過不可用的片段
+        "skip_unavailable_fragments": True,
     }
     if cookiefile:
         ydl_opts["cookiefile"] = cookiefile
