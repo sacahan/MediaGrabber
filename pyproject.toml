@@ -12,7 +12,7 @@ requires-python = ">=3.9"
 
 dependencies = [
     "Flask>=2.0",
-    "yt-dlp==2025.10.1.232815.dev0",
+    "yt-dlp>=2025.11.12",
     "tqdm",
     "Flask-CORS",
     "gunicorn",

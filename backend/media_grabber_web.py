@@ -77,9 +77,13 @@ def _create_cookie_file(cookie: str | None, tmpdir: str) -> str | None:
             netscape_cookies = ["# Netscape HTTP Cookie File"]
             for c in cookies_data:
                 domain = c.get("domain", "")
-                if not domain.startswith(".") and not c.get("hostOnly", True):
+                # hostOnly=False means cookie applies to domain and subdomains
+                # hostOnly=True means cookie applies only to exact host
+                host_only = c.get("hostOnly", True)
+                if not domain.startswith(".") and not host_only:
+                    # Add leading dot for domain cookies (not host-specific)
                     domain = "." + domain
-                all_domains = "TRUE" if not c.get("hostOnly", True) else "FALSE"
+                all_domains = "FALSE" if host_only else "TRUE"
                 path = c.get("path", "/")
                 secure = "TRUE" if c.get("secure", False) else "FALSE"
                 expires = str(int(c.get("expirationDate", 0)))
@@ -134,6 +138,17 @@ def get_metadata():
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
+            # 添加現代的 User-Agent 避免被認定為機器人
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            # HTTP 頭部用於繞過反爬蟲
+            "http_headers": {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+            },
+            # 網絡優化
+            "socket_timeout": 30,
+            "skip_unavailable_fragments": True,
         }
         if cookie_file_path:
             ydl_opts["cookiefile"] = cookie_file_path
@@ -216,6 +231,62 @@ def do_download(
             )
 
     try:
+        # 構建通用的 yt-dlp 選項 (所有來源共用)
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            # 添加現代的 User-Agent 避免被認定為機器人
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            # HTTP 頭部用於繞過反爬蟲
+            "http_headers": {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+            },
+            # 網絡優化
+            "socket_timeout": 30,
+            "skip_unavailable_fragments": True,
+        }
+
+        # 來源特定配置
+        if source == "youtube":
+            ydl_opts["http_headers"]["Referer"] = "https://www.youtube.com/"
+        elif source == "twitter":
+            ydl_opts["http_headers"]["Referer"] = "https://x.com/"
+        elif source == "facebook":
+            ydl_opts["http_headers"]["Referer"] = "https://www.facebook.com/"
+        elif source == "instagram":
+            ydl_opts["http_headers"]["Referer"] = "https://www.instagram.com/"
+            ydl_opts["extractor_args"] = {"instagram": {"fetch_all_comments": False}}
+        else:
+            raise ValueError(f"Unsupported source: {source}")
+
+        if cookie_file_path:
+            ydl_opts["cookiefile"] = cookie_file_path
+
+        # 提取元數據並檢查文件大小（視頻來源需要檢查）
+        if source != "youtube" or format == "mp4":
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
+
+            size = info_dict.get("filesize") or info_dict.get("filesize_approx", 0)
+            # YouTube MP3 無大小限制，其他來源 50MB limit
+            size_limit = (
+                float("inf")
+                if (source == "youtube" and format == "mp3")
+                else 50 * 1024 * 1024
+            )
+
+            if size and size > size_limit:
+                shutil.rmtree(tmpdir)
+                logging.warning(
+                    f"[{job_id}] Video size ({size} bytes) exceeds limit ({size_limit} bytes)."
+                )
+                state.update(status="error", error="Video size exceeds limit")
+                return
+
+        # YouTube 特殊處理：MP3 和 MP4 格式差異
         if source == "youtube":
             if format == "mp3":
                 download_and_extract_audio(
@@ -229,33 +300,9 @@ def do_download(
                 )
                 pattern = "*.mp4"
                 mimetype = "video/mp4"
-        elif source == "twitter":
-            # Twitter/X.com downloads - no size limit (videos are usually small)
-            download_video_file(
-                url, Path(tmpdir), progress_hook=hook, cookiefile=cookie_file_path
-            )
-            pattern = "*.mp4"
-            mimetype = "video/mp4"
-        else:  # facebook, instagram
-            # For metadata extraction, do NOT specify format to avoid validation errors
-            ydl_opts = {
-                "quiet": True,
-                "no_warnings": True,
-                "noplaylist": True,
-            }
-            if cookie_file_path:
-                ydl_opts["cookiefile"] = cookie_file_path
 
-            with YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(url, download=False)
-            size = info_dict.get("filesize") or info_dict.get("filesize_approx", 0)
-            if size and size > 50 * 1024 * 1024:  # 50 MB limit for Facebook/Instagram
-                shutil.rmtree(tmpdir)
-                logging.warning(
-                    f"[{job_id}] Video size ({size} bytes) exceeds 50MB limit."
-                )
-                state.update(status="error", error="Video size exceeds 50MB limit")
-                return
+        # Twitter、Facebook、Instagram 使用相同邏輯
+        else:
             download_video_file(
                 url, Path(tmpdir), progress_hook=hook, cookiefile=cookie_file_path
             )

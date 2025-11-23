@@ -11,13 +11,14 @@ RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env.production
 RUN npm run build
 
 # Stage 2: Create the Python backend
-FROM python:3.10-slim
+FROM python:3.12-slim
 WORKDIR /app
 
 # Install ffmpeg
 RUN apt-get update && apt-get install -y ffmpeg
 
 # Install dependencies using pyproject.toml
+# This includes yt-dlp with latest Instagram support
 COPY ./pyproject.toml ./
 RUN pip install --no-cache-dir .
 

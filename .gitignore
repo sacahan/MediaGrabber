@@ -50,6 +50,13 @@ frontend/build/
 # Backend Logs
 backend/log/
 
+# Cookies and authentication files
+backend/cookies/*.txt
+!backend/cookies/README.md
+cookies_*.txt
+.cookies/
+cookies.txt
+
 # Logs
 logs
 *.log

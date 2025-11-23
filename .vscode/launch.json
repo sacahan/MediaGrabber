@@ -25,5 +25,12 @@
         "NODE_ENV": "development"
       }
     }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack (Backend + Frontend)",
+      "configurations": ["Backend Debugger", "Frontend Debugger"],
+      "stopAll": true
+    }
   ]
 }
