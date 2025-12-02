@@ -31,7 +31,11 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-[Gates determined based on constitution file]
+- [ ] **Gate MG-G1 — Interface parity**: Document CLI command updates and REST endpoints that will stay in lockstep, plus equal testing for both surfaces.
+- [ ] **Gate MG-G2 — Real-world verification**: List real platform URLs, rate-limit protections, and the integration test cadence (recorded in `backend/TEST_RESULTS.md`).
+- [ ] **Gate MG-G3 — Module boundaries**: Explain how services stay small (≤50 lines/function), avoid new manager classes, and provide migration notes for legacy code.
+- [ ] **Gate MG-G4 — Progressive quality**: Show how download success lands before optional transcoding/mobile optimisations, including opt-in flags.
+- [ ] **Gate MG-G5 — Observability**: Describe progress/error payload fields and how CLI + Web will surface them for humans.
 
 ## Project Structure
 
