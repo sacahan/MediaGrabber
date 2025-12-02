@@ -7,10 +7,14 @@ import re
 import sys
 from pathlib import Path
 import argparse
+import logging
 
 from tqdm import tqdm
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
+
+# Setup logger for CLI
+logger = logging.getLogger(__name__)
 
 
 def _prepare_download(url: str, output_dir: Path):
@@ -20,6 +24,8 @@ def _prepare_download(url: str, output_dir: Path):
     filename.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Output directory prepared: {output_dir.resolve()}")
+
     # Configure yt-dlp to only extract metadata without downloading the video.
     # 'quiet' and 'no_warnings' suppress console output from yt-dlp.
     # 'noplaylist' ensures only single video info is extracted, ignoring playlist
@@ -31,15 +37,25 @@ def _prepare_download(url: str, output_dir: Path):
         "no_warnings": True,
         "noplaylist": True,
     }
-    with YoutubeDL(meta_opts) as ydl_meta:
-        info = ydl_meta.extract_info(url, download=False)
-    title = info.get("title", "")
+    try:
+        with YoutubeDL(meta_opts) as ydl_meta:
+            info = ydl_meta.extract_info(url, download=False)
+        title = info.get("title", "")
+        logger.debug(f"Extracted title: {title}")
+    except Exception as e:
+        logger.error(f"Failed to extract metadata for {url}: {e}", exc_info=True)
+        raise
+
     # Remove invalid characters and replace with underscore
     basename = re.sub(r'[<>:"/\\|?*]', "_", title)  # Fixed invalid escape sequence
     # Truncate to 50 characters if longer
     if len(basename) > 50:
         basename = basename[:50]
-    return str(output_dir / f"{basename}.%(ext)s")
+        logger.debug(f"Basename truncated to 50 characters: {basename}")
+
+    output_path = str(output_dir / f"{basename}.%(ext)s")
+    logger.info(f"Output template: {output_path}")
+    return output_path
 
 
 def download_and_extract_audio(
@@ -54,6 +70,8 @@ def download_and_extract_audio(
             download progress. Used by the web GUI to update progress status.
         cookiefile (str, optional): Path to a cookie file.
     """
+    logger.info(f"Starting audio download: {url}")
+
     # Determine the output template for the filename, ensuring it's safe and
     # truncated.
     outtmpl = _prepare_download(url, output_dir)
@@ -79,7 +97,7 @@ def download_and_extract_audio(
                 # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
                     progress["pbar"].close()
-                print("Download finished, extracting audio...")
+                logger.info("Download finished, extracting audio...")
 
     else:
         # Use the provided external progress hook (e.g., from Flask app).
@@ -121,12 +139,21 @@ def download_and_extract_audio(
         "skip_unavailable_fragments": True,
         # Instagram 特定選項
         "extractor_args": {"instagram": {"fetch_all_comments": False}},
+        # Enable remote components for JS challenge solving (requires Deno/Node)
+        "remote_components": "ejs:github",
     }
     if cookiefile:
         ydl_opts["cookiefile"] = cookiefile
+        logger.debug(f"Using cookie file: {cookiefile}")
 
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    try:
+        logger.debug("Configuring yt-dlp for audio extraction (MP3)")
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        logger.info("Audio extraction completed successfully")
+    except Exception as e:
+        logger.error(f"Audio extraction failed: {e}", exc_info=True)
+        raise
 
 
 def download_video_file(
@@ -141,6 +168,8 @@ def download_video_file(
             download progress. Used by the web GUI to update progress status.
         cookiefile (str, optional): Path to a cookie file.
     """
+    logger.info(f"Starting video download: {url}")
+
     # Determine the output template for the filename, ensuring it's safe and
     # truncated.
     outtmpl = _prepare_download(url, output_dir)
@@ -166,7 +195,7 @@ def download_video_file(
                 # Close the tqdm progress bar once download is complete.
                 if progress["pbar"] is not None:
                     progress["pbar"].close()
-                print("Download finished, merging video...")
+                logger.info("Download finished, merging video...")
 
     else:
         # Use the provided external progress hook (e.g., from Flask app).
@@ -212,12 +241,21 @@ def download_video_file(
         "skip_unavailable_fragments": True,
         # Instagram 特定選項
         "extractor_args": {"instagram": {"fetch_all_comments": False}},
+        # Enable remote components for JS challenge solving (requires Deno/Node)
+        "remote_components": "ejs:github",
     }
     if cookiefile:
         ydl_opts["cookiefile"] = cookiefile
+        logger.debug(f"Using cookie file: {cookiefile}")
 
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    try:
+        logger.debug("Configuring yt-dlp for video download and merging (MP4)")
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        logger.info("Video download and merge completed successfully")
+    except Exception as e:
+        logger.error(f"Video download failed: {e}", exc_info=True)
+        raise
 
 
 def main():
@@ -227,6 +265,12 @@ def main():
     the appropriate download function based on user's format choice.
     Includes robust error handling for common yt-dlp issues.
     """
+    # Configure logging for CLI
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
     parser = argparse.ArgumentParser(
         description="MediaGrabber CLI: download media as MP3 or MP4"
     )
@@ -254,30 +298,39 @@ def main():
     )
     args = parser.parse_args()
 
+    logger.info(f"MediaGrabber CLI started with URL: {args.url}, format: {args.format}")
+
     outdir = Path(args.output)
     try:
         if args.format == "mp3":
+            logger.info("Downloading as MP3 (audio only)")
             download_and_extract_audio(args.url, outdir, cookiefile=args.cookie)
             label = "MP3"
         else:
+            logger.info("Downloading as MP4 (video + audio)")
             download_video_file(args.url, outdir, cookiefile=args.cookie)
             label = "MP4"
+        logger.info(f"All done! {label} files are in: {outdir.resolve()}")
         print(f"All done! {label} files are in: {outdir.resolve()}")
     # Catch specific yt-dlp errors to provide user-friendly messages.
-    except GeoRestrictedError:
+    except GeoRestrictedError as e:
+        logger.error(f"GeoRestricted error: {e}")
         print("Error: This video is not available in your region.", file=sys.stderr)
         sys.exit(1)
-    except ExtractorError:
+    except ExtractorError as e:
+        logger.error(f"Extractor error: {e}")
         print(
             "Error: Could not extract video information. The URL may be invalid or unsupported.",
             file=sys.stderr,
         )
         sys.exit(1)
     except DownloadError as e:
+        logger.error(f"Download error: {e}")
         print(f"Error: Download failed. {e}", file=sys.stderr)
         sys.exit(1)
     # Catch any other unexpected errors.
     except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
 

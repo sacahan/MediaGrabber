@@ -28,6 +28,7 @@ tmp*.pem
 # Media output directories
 output/
 output_mp3/
+backend/lab/downloads
 
 # Flask instance folder
 instance/
@@ -48,7 +49,7 @@ frontend/.vite/
 frontend/build/
 
 # Backend Logs
-backend/log/
+backend/logs/
 
 # Cookies and authentication files
 backend/cookies/*.txt

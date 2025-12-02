@@ -26,6 +26,7 @@ from urllib.parse import quote
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
 import logging
+from logging.handlers import RotatingFileHandler
 
 import threading
 import uuid
@@ -35,6 +36,13 @@ from datetime import datetime
 
 app = Flask(__name__, static_folder="frontend/dist", static_url_path="/")
 CORS(app)
+
+# Setup logging directory
+LOGS_DIR = Path(__file__).parent / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+# Configure logging format
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 if __name__ != "__main__":
     # When running via Gunicorn, it handles logging.
@@ -47,9 +55,25 @@ if __name__ != "__main__":
         handlers=gunicorn_logger.handlers, level=gunicorn_logger.level, force=True
     )
 else:
-    # When running directly for development, log to the console.
+    # When running directly for development, log to both console and file.
+    # Create file handler with rotation (max 10MB per file, keep 5 backups)
+    file_handler = RotatingFileHandler(
+        LOGS_DIR / "mediagrabber.log",
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+    )
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+    # Configure root logger
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        level=logging.INFO,
+        format=LOG_FORMAT,
+        handlers=[file_handler, console_handler],
+        force=True,
     )
     app.logger.setLevel(logging.INFO)
 
@@ -68,22 +92,36 @@ def _create_cookie_file(cookie: str | None, tmpdir: str) -> str | None:
     Returns the path to the cookie file if created/provided, else None.
     """
     if not cookie:
+        logging.debug("No cookie provided")
         return None
 
     # Check if the cookie is in JSON format (from web UI)
     if cookie.strip().startswith("["):
         try:
             cookies_data = json.loads(cookie)
+            logging.debug(
+                f"Converting {len(cookies_data)} cookies from JSON format to Netscape format"
+            )
             netscape_cookies = ["# Netscape HTTP Cookie File"]
             for c in cookies_data:
                 domain = c.get("domain", "")
-                # hostOnly=False means cookie applies to domain and subdomains
-                # hostOnly=True means cookie applies only to exact host
-                host_only = c.get("hostOnly", True)
-                if not domain.startswith(".") and not host_only:
-                    # Add leading dot for domain cookies (not host-specific)
-                    domain = "." + domain
-                all_domains = "FALSE" if host_only else "TRUE"
+                host_only = c.get("hostOnly", False)
+
+                # Netscape format: domain starting with dot = applies to subdomains (all_domains=TRUE)
+                # domain without dot = applies only to exact host (all_domains=FALSE)
+                # hostOnly=False means it's a domain cookie (should have leading dot)
+                # hostOnly=True means it's host-specific (should NOT have leading dot)
+                if host_only:
+                    # Host-specific cookie: remove leading dot if present
+                    if domain.startswith("."):
+                        domain = domain[1:]
+                    all_domains = "FALSE"
+                else:
+                    # Domain cookie: ensure leading dot
+                    if not domain.startswith("."):
+                        domain = "." + domain
+                    all_domains = "TRUE"
+
                 path = c.get("path", "/")
                 secure = "TRUE" if c.get("secure", False) else "FALSE"
                 expires = str(int(c.get("expirationDate", 0)))
@@ -96,12 +134,17 @@ def _create_cookie_file(cookie: str | None, tmpdir: str) -> str | None:
             cookie_file_path = os.path.join(tmpdir, "cookies.txt")
             with open(cookie_file_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(netscape_cookies))
+            logging.info(f"Cookie file created at: {cookie_file_path}")
             return cookie_file_path
-        except (json.JSONDecodeError, AttributeError):
+        except (json.JSONDecodeError, AttributeError) as e:
             # Not valid JSON, assume it's a file path from CLI
+            logging.warning(
+                f"Failed to parse cookies as JSON: {e}. Assuming it's a file path: {cookie}"
+            )
             return cookie
     else:
         # Not JSON, assume it's a file path from CLI
+        logging.debug(f"Cookie provided as file path: {cookie}")
         return cookie
 
 
@@ -125,8 +168,10 @@ def get_metadata():
     url = data.get("url", "").strip()
     cookie = data.get("cookie")
     if not url:
+        logging.warning("Metadata request received without URL")
         return jsonify({"error": "The URL is required"}), 400
 
+    logging.info(f"Fetching metadata for URL: {url}")
     tmpdir = tempfile.mkdtemp()
     cookie_file_path = _create_cookie_file(cookie, tmpdir)
 
@@ -156,10 +201,13 @@ def get_metadata():
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        return jsonify({"title": info.get("title"), "thumbnail": info.get("thumbnail")})
+        title = info.get("title", "Unknown")
+        thumbnail = info.get("thumbnail", "")
+        logging.info(f"Metadata extracted successfully: title='{title}'")
+        return jsonify({"title": title, "thumbnail": thumbnail})
     except (ExtractorError, DownloadError) as e:
         error_msg = str(e)
-        logging.warning(f"Could not extract metadata for {url}: {e}")
+        logging.warning(f"Could not extract metadata for {url}: {error_msg}")
 
         # Special handling for Facebook "Cannot parse data" error
         if "facebook" in url.lower() and "Cannot parse data" in error_msg:
@@ -184,7 +232,8 @@ def get_metadata():
             ),
             500,
         )
-    except GeoRestrictedError:
+    except GeoRestrictedError as e:
+        logging.warning(f"GeoRestricted error for {url}: {e}")
         return jsonify({"error": "Video is not available in your region."}), 500
     except Exception as e:
         logging.error(f"Error fetching metadata for {url}: {e}", exc_info=True)
@@ -399,13 +448,19 @@ def download_file(job_id):
     API endpoint to serve the downloaded file to the user.
     This streams the file content and cleans up the temporary directory afterwards.
     """
+    logging.info(f"Download file request for job_id: {job_id}")
     state = PROGRESS_STATE.get(job_id)
     if not state or state.get("status") != "done" or not state.get("file_path"):
+        logging.warning(f"File not ready for job_id: {job_id}. State: {state}")
         return jsonify({"error": "File not ready"}), 404
     file_path = state["file_path"]
     tmpdir = state["tmpdir"]
     filename = state["filename"]
     mimetype = state["mimetype"]
+
+    logging.info(
+        f"Serving file: {filename} (size: {Path(file_path).stat().st_size} bytes)"
+    )
 
     def generate():
         """Generator function to stream the file in chunks."""
@@ -415,8 +470,12 @@ def download_file(job_id):
                 if not chunk:
                     break
                 yield chunk
+        logging.debug(f"File streaming completed for job_id: {job_id}")
         shutil.rmtree(tmpdir)
         PROGRESS_STATE.pop(job_id, None)
+        logging.info(
+            f"Cleaned up temporary directory and removed job state for job_id: {job_id}"
+        )
 
     headers = {
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
@@ -441,8 +500,10 @@ def get_playlist_metadata():
     cookie = data.get("cookie")
 
     if not url:
+        logging.warning("Playlist metadata request received without URL")
         return jsonify({"error": "The URL is required"}), 400
 
+    logging.info(f"Fetching playlist metadata for URL: {url}")
     tmpdir = tempfile.mkdtemp()
     cookie_file_path = _create_cookie_file(cookie, tmpdir)
 
@@ -461,6 +522,7 @@ def get_playlist_metadata():
 
         # Check if it's actually a playlist
         if playlist_info.get("_type") != "playlist":
+            logging.warning(f"URL is not a playlist: {url}")
             return (
                 jsonify(
                     {
@@ -482,9 +544,13 @@ def get_playlist_metadata():
                     }
                 )
 
+        playlist_title = playlist_info.get("title", "Unknown Playlist")
+        logging.info(
+            f"Playlist metadata fetched: title='{playlist_title}', videos={len(videos)}"
+        )
         return jsonify(
             {
-                "title": playlist_info.get("title", "Unknown Playlist"),
+                "title": playlist_title,
                 "uploader": playlist_info.get("uploader", "Unknown"),
                 "video_count": len(videos),
                 "videos": video_list,
@@ -773,13 +839,20 @@ def playlist_download_file(job_id):
     """
     API endpoint to download the ZIP file containing all playlist videos.
     """
+    logging.info(f"Playlist download file request for job_id: {job_id}")
     state = PLAYLIST_STATE.get(job_id)
     if not state or state.get("status") != "completed" or not state.get("zip_path"):
+        logging.warning(
+            f"Playlist ZIP file not ready for job_id: {job_id}. State: {state}"
+        )
         return jsonify({"error": "File not ready"}), 404
 
     zip_path = state["zip_path"]
     zip_filename = state["zip_filename"]
     tmpdir = state["tmpdir"]
+
+    file_size = Path(zip_path).stat().st_size
+    logging.info(f"Serving playlist ZIP: {zip_filename} (size: {file_size} bytes)")
 
     def generate():
         """Generator function to stream the ZIP file"""
@@ -789,13 +862,17 @@ def playlist_download_file(job_id):
                 if not chunk:
                     break
                 yield chunk
+        logging.debug(f"ZIP file streaming completed for job_id: {job_id}")
         # Cleanup after download
         shutil.rmtree(tmpdir)
         PLAYLIST_STATE.pop(job_id, None)
+        logging.info(
+            f"Cleaned up temporary directory and removed job state for job_id: {job_id}"
+        )
 
     headers = {
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(zip_filename)}",
-        "Content-Length": str(Path(zip_path).stat().st_size),
+        "Content-Length": str(file_size),
     }
 
     return Response(

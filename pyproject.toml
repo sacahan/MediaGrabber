@@ -8,16 +8,20 @@ version = "0.1.0"
 description = "A media grabbing application."
 authors = [{ name = "Brian Han", email = "sacahan@gmail.com" }]
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 dependencies = [
     "Flask>=2.0",
-    "yt-dlp>=2025.11.12",
+    "yt-dlp>=2025.11.29",
     "tqdm",
     "Flask-CORS",
     "gunicorn",
     "pre-commit",
     "ruff",
+    "jupyter>=1.1.1",
+    "ipykernel>=7.1.0",
+    "pytubefix>=10.3.5",
+    "playwright>=1.56.0",
 ]
 
 [tool.setuptools]
