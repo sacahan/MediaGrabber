@@ -1,24 +1,44 @@
-# Ignore Docker related files
+# Docker build context hygiene
 Dockerfile
 .dockerignore
 build_and_run.sh
 
-# Ignore git and vscode config
+# Version control & editors
 .git
 .gitignore
 .vscode
+.idea
+.DS_Store
 
-# Ignore node_modules
-frontend/node_modules
+# Environment files
+.env
+.env.*
+.envrc
 
-# Ignore Python virtual environment and cache
-backend/.venv
-backend/__pycache__
-backend/.pytest_cache
+# Dependencies and build artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+frontend/.vite/
+dist/
+build/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.venv/
+venv/
+env/
 
-# Ignore test files and logs
-backend/test_*.py
-backend/log
+# Logs and test outputs
+*.log
+backend/log/
+logs/
 
-# Ignore output directory
-output
+# Project outputs
+output/
+backend/lab/downloads/
+MediaGrabber.egg-info/

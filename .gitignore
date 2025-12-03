@@ -1,5 +1,18 @@
-# Byte-compiled / optimized / DLL files
+# General build artifacts
+__pycache__/
 backend/__pycache__/
+*.py[cod]
+*$py.class
+node_modules/
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+.envrc
+
+# Byte-compiled / optimized / DLL files
 *.py[cod]
 *$py.class
 
