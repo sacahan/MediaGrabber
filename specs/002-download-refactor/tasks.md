@@ -71,7 +71,7 @@
 - [x] T019 [P] [US2] 使用 `contracts/downloads.openapi.yaml` 於 `backend/tests/contract/test_downloads_api.py` 撰寫 `/api/downloads*` OpenAPI 契約測試。
 - [x] T020 [P] [US2] 在 `backend/tests/integration/test_rest_social_pipeline.py` 實作 REST 整合測試（啟動本機 Flask + 模擬 ffmpeg 備援）。
 - [x] T021 [P] [US2] 於 `frontend/tests/App.downloads.test.ts` 撰寫前端組件測試（Vitest）以覆蓋進度主控台。
-- [ ] T043 [P] [US2] 寫 REST 層節流／退避契約測試，模擬 429/5xx 並驗證 `/progress` 紀錄 queueDepth、retryAfter 與 remediation。
+- [x] T043 [P] [US2] 寫 REST 層節流／退避契約測試，模擬 429/5xx 並驗證 `/progress` 紀錄 queueDepth、retryAfter 與 remediation。
 
 ### 實作 – US2
 
@@ -79,9 +79,9 @@
 - [x] T023 [P] [US2] 在 `backend/app/services/transcode_service.py` 呼叫佇列並強制主要／備援設定檔與檔案大小驗證。
 - [x] T024 [US2] 建立 Flask blueprint `backend/app/api/downloads.py`，涵蓋 POST/GET/進度端點並串接進度匯流排與 playlistItems schema。
 - [x] T025 [US2] 於 `backend/app/api/request_validators.py` 新增 cookies 輸入與驗證（解碼 `cookiesBase64`、臨時儲存檔案）。
-- [ ] T026 [US2] 更新 `frontend/src/lib/services/downloads.ts` 與 `frontend/src/App.svelte`，輪詢 `/progress`、呈現修復建議與佇列深度。
-- [ ] T027 [US2] 在 `quickstart.md` 與 `README.md`（Web 章節）補完 REST 使用與 cookies 指引。
-- [ ] T045 [US2] 將 `retry_policy` 結果映射到 REST 回應與前端訊息，確保 API payload 含 `retryAfterSeconds`、`attemptsRemaining`、 remediation。
+- [x] T026 [US2] 更新 `frontend/src/lib/services/downloads.ts` 與 `frontend/src/App.svelte`，輪詢 `/progress`、呈現修復建議與佇列深度。
+- [x] T027 [US2] 在 `quickstart.md` 與 `README.md`（Web 章節）補完 REST 使用與 cookies 指引。
+- [x] T045 [US2] 將 `retry_policy` 結果映射到 REST 回應與前端訊息，確保 API payload 含 `retryAfterSeconds`、`attemptsRemaining`、 remediation。
 
 **檢查點**：Web 使用者可下載 IG/FB/X 影片並獲得備援轉檔與前端可視化。
 
@@ -102,9 +102,9 @@
 
 - [x] T031 [P] [US3] 實作 `backend/app/services/progress_store.py`，維護 TTL 進度歷史與佇列指標並與匯流排整合。
 - [x] T032 [P] [US3] 在 `backend/app/services/remediation.py` 建立修復建議模組，對應 ffmpeg 缺失、節流、cookies 等錯誤碼。
-- [ ] T033 [US3] 擴充 CLI 與 REST 回應，加入修復資訊與壓縮統計（更新 `backend/app/cli/progress_renderer.py`、`backend/app/api/downloads.py`）。
-- [ ] T034 [US3] 自動化 `backend/TEST_RESULTS.md` 追加流程與產物壓縮報告腳本（`scripts/update_test_results.py`）。
-- [ ] T035 [US3] 建立作業監控儀表與日誌設定（`backend/logs/logging.conf`）並於 `docs/observability.md` 說明操作步驟。
+- [x] T033 [US3] 擴充 CLI 與 REST 回應，加入修復資訊與壓縮統計（更新 `backend/app/cli/progress_renderer.py`、`backend/app/api/downloads.py`）。
+- [x] T034 [US3] 自動化 `backend/TEST_RESULTS.md` 追加流程與產物壓縮報告腳本（`scripts/update_test_results.py`）。
+- [x] T035 [US3] 建立作業監控儀表與日誌設定（`backend/logs/logging.conf`）並於 `docs/observability.md` 說明操作步驟。
 
 **檢查點**：營運可在 CLI/Web 取得一致遙測與修復訊息。
 
@@ -112,11 +112,11 @@
 
 ## 第 6 階段：潤飾與跨領域關注事項
 
-- [ ] T036 [P] 強化錯誤翻譯與在地化掛鉤（`backend/app/services/remediation.py`），避免洩漏原始堆疊。
-- [ ] T037 [P] 文件最終總整：更新 `quickstart.md`、`README.md`、`docs/` 圖表以反映統一管線架構。
-- [ ] T038 [P] 效能巡檢：量測並行佇列情境、調整預設值、於 `docs/performance.md` 紀錄結果。
+- [x] T036 [P] 強化錯誤翻譯與在地化掛鉤（`backend/app/services/remediation.py`），避免洩漏原始堆疊。
+- [x] T037 [P] 文件最終總整：更新 `quickstart.md`、`README.md`、`docs/` 圖表以反映統一管線架構。
+- [x] T038 [P] 效能巡檢：量測並行佇列情境、調整預設值、於 `docs/performance.md` 紀錄結果。
 - [x] T039 執行 `ruff check backend/` 與 `npm run lint`，於發佈前修正所有違規。
-- [ ] T040 完整驗證 quickstart（CLI + Web）並將結果寫入 `docs/release-notes.md`。
+- [x] T040 完整驗證 quickstart（CLI + Web）並將結果寫入 `docs/release-notes.md`。
 - [x] T046 [P] 建立 `scripts/run_cli_youtube_benchmarks.py`，自動連續執行 20 個 CLI YouTube 任務並輸出成功率／平均耗時，寫入 `backend/TEST_RESULTS.md`（SC-001）。
 - [x] T047 [P] 建立 `scripts/run_rest_social_benchmarks.py`，以 `/api/downloads` 模擬 IG/FB 下載並量測完成時間，確保 ≤120 秒並寫入測試紀錄（SC-002）。
 - [x] T048 [P] 擴充 `backend/TEST_RESULTS.md` 產出腳本，彙總 T046/T047 的統計並輸出 JSON/Markdown 報告供 CI 與文件引用。
