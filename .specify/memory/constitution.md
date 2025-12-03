@@ -13,19 +13,17 @@ post_date: 2025-12-02
 
 <!--
 Sync Impact Report
-Version: 1.0.0 → 1.1.0
+Version: 1.1.0 → 2.0.0
 Modified Principles:
-- 雙介面等同可用（clarified parity scope and CLI/API alignment）
-- 測試優先且涵蓋真實整合（explicit verification cadence）
-- 設計簡潔、模組微小（codified ≤50 行限制）
+- 雙介面等同可用（允許以全新模組實作 CLI / REST 入口，僅保留功能等效要求）
+- 守門檢查 MG-G3（移除遺留程式遷移計畫強制要求，聚焦模組邊界）
 Added Sections:
-- 守門檢查（Constitution Gates）
-- 版本與修訂政策
-Removed Sections:
 - None
+Removed Sections:
+- 舊有模組遷移的強制敘述
 Templates:
 - ✅ .specify/templates/plan-template.md
-- ✅ .specify/templates/spec-template.md（無須更新）
+- ✅ .specify/templates/spec-template.md（需檢查是否引用舊條文）
 - ✅ .specify/templates/tasks-template.md（無須更新）
 Follow-ups:
 - ✅ RATIFICATION_APPROVAL: approved by Brian Han on 2025-12-02
@@ -46,11 +44,11 @@ Follow-ups:
 
 **實施要點**：
 
-- CLI 指令 MUST 實作於現有 CLI 模組（目前為 `backend/media_grabber.py`，目標遷移至 `backend/app/cli/`），並提供完整參數解析與說明
-- REST API MUST 由 Flask blueprint（`backend/app/api/`）提供，且對應 CLI 所有功能與參數
-- 核心商業邏輯 MUST 集中在共享服務模組（目標路徑 `backend/app/services/`），未遷移的遺留程式需在 PR 中附遷移計畫
-- 新功能開發順序 MUST 為：核心服務邏輯 → CLI 包裝 → API 端點，以確保共用程式碼
-- 測試 MUST 驗證 CLI 與 Web 在輸出格式、品質選項與錯誤回報上完全等效
+- CLI 指令 MUST 由 `backend/app/cli/` 或其他新建立的 CLI 模組提供，並以清楚的參數解析與說明交付全量功能；允許創建全新 entry point 取代舊檔案。
+- REST API MUST 由 Flask blueprint（建議路徑 `backend/app/api/`）提供，並與 CLI 保持功能與參數對等。
+- 核心商業邏輯 MUST 集中在共享服務模組（建議路徑 `backend/app/services/`），CLI 與 Web 介面必須透過該服務層協作；可重新實作，不需沿用舊程式碼。
+- 新功能開發順序 MUST 為：核心服務邏輯 → CLI 包裝 → API 端點，以確保共用程式碼。
+- 測試 MUST 驗證 CLI 與 Web 在輸出格式、品質選項與錯誤回報上完全等效。
 
 ---
 
@@ -130,7 +128,7 @@ Follow-ups:
   - FAIL：僅依賴模擬或未規劃結果紀錄。
 - **Gate MG-G3 — 模組邊界與複雜度**
   - PASS：說明服務模組拆分、函式長度控制與避免非必要控制類別的策略。
-  - FAIL：以「日後重構」為由忽略複雜度或持續堆疊臨時管理類。
+  - FAIL：缺乏清楚的模組責任界線、函式長度過長或大量臨時管理類。
 - **Gate MG-G4 — 漸進式品質策略**
   - PASS：計畫先交付可用下載，再排程轉碼或裝置優化；可選功能標示為 opt-in。
   - FAIL：核心下載依賴選配功能或缺乏還原計畫。
@@ -205,14 +203,14 @@ project/
 
 1. ✅ 於 `backend/app/services/` 實作核心邏輯
 2. ✅ 撰寫單元測試（`backend/tests/unit/`）並模擬外部依賴
-3. ✅ 補齊 CLI 指令（`backend/main.py` 參數解析）
+3. ✅ 補齊 CLI 指令（例如於 `backend/app/cli/` 建立 entry point，並提供對應的指令列介面）
 4. ✅ 新增 REST API 端點（`backend/app/api/` 路由）
 5. ✅ 撰寫整合測試（`backend/tests/integration/`）驗證平台相容性
 6. ✅ 撰寫契約測試（`backend/tests/contract/`）確保介面一致
 7. ✅ 更新 README.md（中英文）說明
 8. ✅ 若平台支援狀態改變，更新 TEST_RESULTS.md
 9. ✅ 執行 `ruff check backend/` 與 pre-commit
-10. ✅ 產生文件使用正體中文表示
+10. ✅ 產生文件使用正體中文撰寫
 11. ✅ 程式碼注釋使用正體中文撰寫
 
 ### 核心下載邏輯調整
@@ -250,17 +248,18 @@ project/
 
 ## 版本紀錄
 
-| 版本  | 日期       | 變更內容                          | 狀態           |
-| ----- | ---------- | --------------------------------- | -------------- |
-| 1.1.0 | 2025-12-02 | 守門檢查、測試節奏、模組規範強化  | ✅ 已核准      |
-|       |            | - 新增 Constitution Gates         |                |
-|       |            | - 明確整合測試頻率與記錄要求      |                |
-|       |            | - 強化 CLI/API 對應與函式長度限制 |                |
-| 1.0.0 | 2025-12-02 | 初版憲章草稿                      | 草稿（待審核） |
-|       |            | - 雙介面等同可用                  |                |
-|       |            | - 測試優先含真實整合              |                |
-|       |            | - 設計簡潔模組微小                |                |
-|       |            | - 品質優化採漸進策略              |                |
-|       |            | - 可觀測且易於閱讀                |                |
+| 版本  | 日期       | 變更內容                                                               | 狀態           |
+| ----- | ---------- | ---------------------------------------------------------------------- | -------------- |
+| 2.0.0 | 2025-12-02 | 允許以全新模組重構 CLI / REST 入口，不再強制沿用既有檔案；守門檢查更新 | ✅ 已核准      |
+| 1.1.0 | 2025-12-02 | 守門檢查、測試節奏、模組規範強化                                       | ✅ 已核准      |
+|       |            | - 新增 Constitution Gates                                              |                |
+|       |            | - 明確整合測試頻率與記錄要求                                           |                |
+|       |            | - 強化 CLI/API 對應與函式長度限制                                      |                |
+| 1.0.0 | 2025-12-02 | 初版憲章草稿                                                           | 草稿（待審核） |
+|       |            | - 雙介面等同可用                                                       |                |
+|       |            | - 測試優先含真實整合                                                   |                |
+|       |            | - 設計簡潔模組微小                                                     |                |
+|       |            | - 品質優化採漸進策略                                                   |                |
+|       |            | - 可觀測且易於閱讀                                                     |                |
 
 **版本**：1.1.0 | **核准日期**：2025-12-02 | **最後修訂**：2025-12-02

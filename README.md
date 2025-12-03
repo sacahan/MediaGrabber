@@ -8,6 +8,8 @@ A simple Python downloader:
 
 ![demo](https://github.com/user-attachments/assets/99ef6eaf-a6a2-43ef-b922-67d481daf400)
 
+> **Interface parity**: Both the CLI (`python -m app.cli.main ...`) and REST API (`/api/downloads*`) now call the same download/transcode services, so every platform/format combination listed above is available from either entry point. Tests enforce that the CLI progress logs and REST `/progress` payloads expose identical fields (`status`, `stage`, `percent`, `queueDepth`, `remediation`).
+
 ## Usage
 
 This project can be run in two modes: **Docker** for a production-like containerized environment, and **Development** for local development and testing.
@@ -61,6 +63,19 @@ It is recommended to use scripts in this directory for all deployment and build 
 ### Development Mode
 
 In Development Mode, the frontend and backend are run as separate processes, allowing for hot-reloading and easier debugging.
+
+#### Environment configuration (CLI + REST)
+
+1. Duplicate `.env.example` to `.env` in the repository root.
+1. Adjust the following knobs according to your workstation:
+
+   - `MG_MAX_TRANSCODE_WORKERS`: Maximum concurrent ffmpeg jobs (default `2`).
+   - `MG_OUTPUT_DIR`: Artifact root for both CLI + REST jobs (default `output`).
+   - `MG_PROGRESS_TTL_SECONDS`: How long progress snapshots stay available for polling (default `300`).
+
+1. Restart the Flask server _and_ relaunch any CLI sessions after editing `.env` so both entry points share the same settings.
+
+> Tip: Because CLI 和 REST 共用同一個 service layer，請保持 `.env` 中的 MG\_\* 變數一致，以免兩種入口對輸出目錄或佇列限制有不同理解。
 
 #### 1. Backend API (Flask)
 

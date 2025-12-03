@@ -1,0 +1,235 @@
+openapi: 3.1.0
+info:
+  title: MediaGrabber Unified Download API
+  version: 0.1.0
+  description: >-
+    REST surface that mirrors CLI capabilities. Anonymous access is allowed;
+    deployment layers (WAF/CDN) enforce optional rate limits.
+servers:
+  - url: https://mediagrabber.example.com
+paths:
+  /api/downloads:
+    post:
+      summary: Submit a download/transcode job
+      operationId: createDownloadJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDownloadRequest"
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "400":
+          description: Validation error (bad URL, unsupported format)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/downloads/{jobId}:
+    get:
+      summary: Fetch job summary, artifacts, and latest status
+      operationId: getDownloadJob
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "404":
+          description: Unknown jobId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/downloads/{jobId}/progress:
+    get:
+      summary: Stream the most recent progress sample for the job
+      operationId: getDownloadProgress
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Progress payload with monotonic percent updates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressState"
+        "404":
+          description: Unknown jobId or expired history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: ULID/UUID returned from submission.
+  schemas:
+    CreateDownloadRequest:
+      type: object
+      required:
+        - url
+        - format
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Media or playlist URL.
+        format:
+          type: string
+          enum: [mp4, mp3]
+          description: Desired output format; playlists default to ZIP packaging when multiple items.
+        preferMobileProfile:
+          type: boolean
+          default: true
+          description: Whether to run the mobile 720p/1000kbps profile before fallback evaluation.
+        skipTranscode:
+          type: boolean
+          default: false
+          description: When true, downloads only the source file and bypasses ffmpeg queue.
+        playlistZip:
+          type: boolean
+          default: true
+          description: Controls whether playlist runs are zipped after completion.
+    DownloadJob:
+      type: object
+      required:
+        - jobId
+        - status
+        - stage
+        - requestedFormat
+        - platform
+        - downloadBackend
+        - outputDir
+        - createdAt
+        - updatedAt
+      properties hideDetails: {}
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum:
+            [
+              pending,
+              downloading,
+              transcoding,
+              packaging,
+              completed,
+              failed,
+              queued,
+            ]
+        stage:
+          type: string
+          description: Human-readable pipeline marker.
+        requestedFormat:
+          type: string
+        platform:
+          type: string
+          enum: [youtube, instagram, facebook, x]
+        downloadBackend:
+          type: string
+          enum: [pytubefix, yt-dlp]
+        outputDir:
+          type: string
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/DownloadArtifact"
+        retryCount:
+          type: integer
+        queueWaitSeconds:
+          type: number
+        compressionRatio:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        error:
+          $ref: "#/components/schemas/ErrorResponse"
+    ProgressState:
+      type: object
+      required:
+        - jobId
+        - status
+        - stage
+        - percent
+        - timestamp
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [queued, downloading, transcoding, packaging, completed, failed]
+        stage:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        downloadedBytes:
+          type: integer
+        totalBytes:
+          type: integer
+          nullable: true
+        speed:
+          type: number
+          nullable: true
+        etaSeconds:
+          type: number
+          nullable: true
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    DownloadArtifact:
+      type: object
+      required:
+        - artifactId
+        - type
+        - path
+        - sizeBytes
+      properties:
+        artifactId:
+          type: string
+        type:
+          type: string
+          enum: [video, audio, archive]
+        path:
+          type: string
+        sizeBytes:
+          type: integer
+        compressionRatio:
+          type: number
+          description: Present for mobile profiles to satisfy SC-004.
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        remediation:
+          type: string
+          description: Human-readable fix suggestion (e.g., "install ffmpeg", "provide cookies").
