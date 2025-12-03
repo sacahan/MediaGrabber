@@ -77,6 +77,58 @@ curl https://localhost:8080/api/downloads/<JOB_ID>/progress
 
 Expect `202` on submission, `200` thereafter with artifacts list plus compression metrics.
 
+### REST Progress Response (T045: FR-007, FR-012)
+
+The `/progress` endpoint returns detailed progress with retry and remediation hints:
+
+```json
+{
+  "jobId": "uuid",
+  "status": "downloading|transcoding|completed|failed",
+  "stage": "downloading",
+  "percent": 45.5,
+  "downloadedBytes": 12345678,
+  "totalBytes": 27000000,
+  "speed": 1048576,
+  "etaSeconds": 15,
+  "message": "Fetching metadata...",
+  "queueDepth": 2,
+  "queuePosition": 1,
+  "retryAfterSeconds": null,
+  "attemptsRemaining": 3,
+  "remediation": {
+    "code": "TRANSCODE_FAILED_OVERSIZED",
+    "message": "Mobile profile exceeded 50MB; trying fallback codec.",
+    "suggestedAction": "Check ffmpeg version or try a lower resolution.",
+    "category": "retry"
+  }
+}
+```
+
+### Instagram/Facebook/X with Cookies (T025, FR-015)
+
+For platform-restricted content, extract cookies and send as base64:
+
+**From browser DevTools:**
+
+1. Open Instagram/Facebook in private window
+2. DevTools → Storage → Cookies
+3. Export as JSON, encode as base64
+
+**REST submission with cookies:**
+
+```bash
+COOKIES_JSON=$(cat instagram_cookies.json)
+COOKIES_B64=$(echo -n "$COOKIES_JSON" | base64)
+
+curl -X POST https://localhost:8080/api/downloads \
+  -H 'Content-Type: application/json' \
+  -d "{\"url\":\"https://www.instagram.com/reel/...\",\"format\":\"mp4\",\"cookiesBase64\":\"$COOKIES_B64\"}"
+```
+
+**Web UI:**
+Paste the cookies JSON directly into the "Cookies" field and submit. The UI will encode and transmit automatically.
+
 ## Frontend workflow
 
 ```bash

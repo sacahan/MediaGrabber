@@ -100,46 +100,55 @@ npm run dev
 
 The Svelte application will typically be running on `http://localhost:5173` (or another available port). Open this URL in your browser to use the Web GUI.
 
+#### Web UI Features (T027)
+
+The Web UI provides real-time progress tracking and unified access to all download platforms:
+
+**Supported Platforms & Formats**:
+
+- YouTube: MP3 (audio), MP4 (video)
+- Instagram: MP4 (mobile-optimized)
+- Facebook: MP4 (mobile-optimized)
+- X (Twitter): MP4 (mobile-optimized)
+
+**Progress Dashboard**:
+
+- Real-time percent completion, ETA, and download speed
+- Queue depth and position when multiple jobs are active
+- Retry countdown and remaining attempts (when enabled)
+- Remediation suggestions for common failures (e.g., ffmpeg missing, platform throttling)
+
+**Platform-Restricted Content (Cookies)**:
+
+For age-restricted or geo-locked videos, paste your browser cookies (as JSON) into the Cookies field:
+
+1. Open the platform in your browser
+2. Open DevTools → Storage → Cookies
+3. Export as JSON (using browser extension or manual copy)
+4. Paste into the "Cookies" field in MediaGrabber Web UI
+5. Submit download
+
+The UI will securely encode and transmit cookies to the backend for authentication.
+
 #### 3. CLI Usage
 
-Download audio or video from supported platforms via script:
+Download audio or video from supported platforms using the new unified CLI:
 
 ```bash
-cd backend
-source .venv/bin/activate # Activate virtual environment
-python media_grabber.py <URL> [-f FORMAT] [-o OUTPUT_DIR]
+# YouTube video
+python -m app.cli.main download --url https://youtu.be/abc123 --format mp4
+
+# YouTube playlist (creates ZIP with all videos)
+python -m app.cli.main playlist --url https://youtube.com/playlist?list=... --format mp3
+
+# Check job status
+python -m app.cli.main status --job-id <JOB_ID>
+
+# Retry failed job with backoff
+python -m app.cli.main retry --job-id <JOB_ID>
 ```
 
-Options:
-
-- `-f, --format`: `mp3` (audio) or `mp4` (video). Default: `mp3`.
-- `-o, --output`: Output directory (default: `../output`).
-
-Examples:
-
-- Download YouTube audio as MP3 to the project's root output directory
-
-```bash
-cd backend
-source .venv/bin/activate
-python media_grabber.py https://youtu.be/abc123 -f mp3 -o ../output
-```
-
-- Download YouTube video as MP4 to a custom directory
-
-```bash
-cd backend
-source .venv/bin/activate
-python media_grabber.py https://youtu.be/abc123 -f mp4 -o /path/to/your/videos
-```
-
-- Download Facebook video as MP4
-
-```bash
-cd backend
-source .venv/bin/activate
-python media_grabber.py https://facebook.com/... -f mp4
-```
+The CLI shares the same backend services as the Web UI, so platform/format support and progress behavior are identical.
 
 ## Known Issues
 

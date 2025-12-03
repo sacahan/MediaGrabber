@@ -2,8 +2,19 @@
   Refactored Svelte component based on the new prototype.html design.
   This component integrates the modern UI with the existing Svelte logic for state management and API communication.
 -->
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
+  import {
+    submitDownload,
+    getJobProgress,
+    pollJobProgress,
+    formatRemediation,
+    formatETA,
+    formatBytes,
+    formatSpeed,
+    type ProgressState,
+    type RemediationSuggestion,
+  } from "./lib/services/downloads";
 
   // --- State Management ---
   let activeTab = "instagram"; // Default active tab
@@ -22,6 +33,15 @@
   let showDownloadButtons = false;
   let cookie = "";
   let isDark = false;
+
+  // --- Progress & Remediation State (T026, T045) ---
+  let progressState: ProgressState | null = null;
+  let queueDepth = 0;
+  let queuePosition = 0;
+  let remediation: RemediationSuggestion | null = null;
+  let retryAfterSeconds: number | null = null;
+  let attemptsRemaining: number | null = null;
+  let stopPolling: (() => void) | null = null;
 
   // --- Playlist State ---
   let isPlaylist = false;
@@ -99,6 +119,45 @@
     handleClear(); // Clear all fields when switching tabs
   }
 
+  // --- Progress Polling (T026, T045) ---
+  /**
+   * Start polling job progress and update UI with queue depth and remediation.
+   */
+  function startProgressPolling(jobId) {
+    if (stopPolling) stopPolling();
+
+    stopPolling = pollJobProgress(jobId, (progress) => {
+      progressState = progress;
+      downloadProgress = Math.round(progress.percent);
+      queueDepth = progress.queueDepth || 0;
+      queuePosition = progress.queuePosition || 0;
+      retryAfterSeconds = progress.retryAfterSeconds;
+      attemptsRemaining = progress.attemptsRemaining;
+      remediation = progress.remediation;
+
+      // Update message with progress details
+      let msg = progress.message || '';
+      if (queueDepth > 0) {
+        msg += ` [佇列: ${queuePosition}/${queueDepth}]`;
+      }
+      if (retryAfterSeconds) {
+        msg += ` [${formatETA(retryAfterSeconds)} 後重試]`;
+      }
+      message = msg;
+
+      // Check completion
+      if (progress.status === 'completed') {
+        overlayTitle = '下載完成!';
+        downloadBtnDisabled = false;
+        clearBtnDisabled = false;
+      } else if (progress.status === 'failed') {
+        overlayTitle = '下載失敗';
+        downloadBtnDisabled = false;
+        clearBtnDisabled = false;
+      }
+    });
+  }
+
   function handleClear() {
     url = "";
     title = "";
@@ -113,6 +172,17 @@
     showDownloadButtons = false;
     downloadFileUrl = null;
     loadingMetadata = false;
+    // Clear progress & remediation state (T026)
+    progressState = null;
+    queueDepth = 0;
+    queuePosition = 0;
+    remediation = null;
+    retryAfterSeconds = null;
+    attemptsRemaining = null;
+    if (stopPolling) {
+      stopPolling();
+      stopPolling = null;
+    }
     // Clear playlist state
     isPlaylist = false;
     playlistMetadata = null;
@@ -369,64 +439,18 @@
     downloadFileUrl = null;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/download_start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: url.trim(),
-          source: activeTab,
-          format: selectedFormat,
-          cookie: cookie,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to start download.");
+      // Submit download using new API (T026, T045)
+      let cookiesBase64 = undefined;
+      if (cookie && cookie.trim()) {
+        cookiesBase64 = btoa(cookie);
       }
 
-      const data = await response.json();
-      const jobId = data.job_id;
-      currentJobId = jobId;
+      const job = await submitDownload(url.trim(), selectedFormat as 'mp4' | 'mp3', cookiesBase64);
+      currentJobId = job.jobId;
 
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResponse = await fetch(`${API_BASE_URL}/progress/${jobId}`);
-          if (!statusResponse.ok) {
-            const errorData = await statusResponse.json();
-            throw new Error(errorData.error || "Failed to get progress.");
-          }
-          const statusData = await statusResponse.json();
+      // Start progress polling (T026, T045)
+      startProgressPolling(job.jobId);
 
-          if (statusData.error) {
-            message = `Error: ${statusData.error}`;
-            clearInterval(pollInterval);
-            overlayVisible = false;
-            downloadBtnDisabled = false;
-            clearBtnDisabled = false;
-            return;
-          }
-
-          downloadProgress = statusData.progress || 0;
-          overlayTitle = `${statusData.stage.charAt(0).toUpperCase() + statusData.stage.slice(1)}...`;
-
-          if (statusData.status === "done") {
-            clearInterval(pollInterval);
-            overlayVisible = false;
-            downloadFileUrl = `${API_BASE_URL}/download_file/${jobId}`;
-            showDownloadButtons = true;
-            message = "Download complete!";
-            downloadBtnDisabled = false;
-            clearBtnDisabled = false;
-          }
-        } catch (error) {
-          message = `Error: ${error.message}`;
-          clearInterval(pollInterval);
-          overlayVisible = false;
-          downloadBtnDisabled = false;
-          clearBtnDisabled = false;
-        }
-      }, 1000);
     } catch (error) {
       message = `Error: ${error.message}`;
       overlayVisible = false;
@@ -823,6 +847,32 @@
         <p class="text-lg font-medium text-gray-700 dark:text-gray-200 mt-2">
           {playlistDownloading ? playlistProgress : downloadProgress}%
         </p>
+
+        <!-- Queue Depth & Position (T026, T045) -->
+        {#if queueDepth > 0 && !playlistDownloading}
+          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm text-gray-700 dark:text-gray-300">
+            <p>📊 佇列位置: {queuePosition} / {queueDepth}</p>
+          </div>
+        {/if}
+
+        <!-- Retry After Info (T045) -->
+        {#if retryAfterSeconds}
+          <div class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded text-sm text-gray-700 dark:text-gray-300">
+            <p>⏳ 將在 {formatETA(retryAfterSeconds)} 後重試</p>
+            {#if attemptsRemaining}
+              <p>嘗試次數剩餘: {attemptsRemaining}</p>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Remediation Suggestion (US3, T045) -->
+        {#if remediation}
+          <div class="mt-3 p-3 bg-orange-50 dark:bg-orange-900/30 rounded text-sm text-left">
+            <p class="font-semibold text-gray-800 dark:text-gray-200">💡 修復建議</p>
+            <p class="text-gray-700 dark:text-gray-300 mt-1">{remediation.message}</p>
+            <p class="text-gray-600 dark:text-gray-400 italic mt-1">{remediation.suggestedAction}</p>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}

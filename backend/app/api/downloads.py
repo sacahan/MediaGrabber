@@ -78,25 +78,67 @@ def submit_download() -> tuple:
 
 @downloads_bp.route("/<job_id>", methods=["GET"])
 def get_job_status(job_id: str) -> tuple:
-    """Get job status and artifacts."""
-    if job_id not in _jobs:
-        return jsonify({"error": f"Job {job_id} not found"}), 404
+    """Get job status and artifacts.
 
-    return jsonify(_jobs[job_id]), 200
-
-
-@downloads_bp.route("/<job_id>/progress", methods=["GET"])
-def get_job_progress(job_id: str) -> tuple:
-    """Get real-time progress for a job."""
+    Returns job details including compression statistics and remediation (T033).
+    """
     if job_id not in _jobs:
         return jsonify({"error": f"Job {job_id} not found"}), 404
 
     job = _jobs[job_id]
-    return jsonify(
-        {
-            "jobId": job_id,
-            "status": job.get("status", "downloading"),
-            "percent": 0.0,
-            "message": "",
-        }
-    ), 200
+
+    # Build response with compression metrics (T033: US3)
+    response = {
+        "jobId": job_id,
+        "status": job.get("status", "pending"),
+        "url": job.get("url"),
+        "format": job.get("format"),
+        "downloadUrl": job.get("downloadUrl"),
+        "isPlaylist": job.get("isPlaylist", False),
+        # Compression & artifacts (T033)
+        "compressionRatio": job.get("compressionRatio", None),
+        "originalSize": job.get("originalSize", None),
+        "compressedSize": job.get("compressedSize", None),
+        "artifactPaths": job.get("artifactPaths", []),
+        "summaryJson": job.get("summaryJson", None),  # Playlist summary path
+        "compressionReport": job.get("compressionReport", None),  # Compression stats
+        # Remediation (T033)
+        "remediation": job.get("remediation", None),
+    }
+
+    return jsonify(response), 200
+
+
+@downloads_bp.route("/<job_id>/progress", methods=["GET"])
+def get_job_progress(job_id: str) -> tuple:
+    """Get real-time progress for a job.
+
+    Returns progress state with queue metrics and retry/remediation details.
+    """
+    if job_id not in _jobs:
+        return jsonify({"error": f"Job {job_id} not found"}), 404
+
+    job = _jobs[job_id]
+
+    # Build progress response with retry & remediation fields (T045)
+    progress_response = {
+        "jobId": job_id,
+        "status": job.get("status", "downloading"),
+        "stage": job.get("stage", "pending"),
+        "percent": job.get("percent", 0.0),
+        "downloadedBytes": job.get("downloadedBytes", 0),
+        "totalBytes": job.get("totalBytes", 0),
+        "speed": job.get("speed", 0),
+        "etaSeconds": job.get("etaSeconds", -1),
+        "message": job.get("message", ""),
+        # Queue metrics (US2/US3)
+        "queueDepth": job.get("queueDepth", 0),
+        "queuePosition": job.get("queuePosition", 0),
+        # Retry policy fields (T045: FR-007)
+        "retryAfterSeconds": job.get("retryAfterSeconds", None),
+        "attemptsRemaining": job.get("attemptsRemaining", None),
+        # Remediation suggestion (US3)
+        "remediation": job.get("remediation", None),
+    }
+
+    return jsonify(progress_response), 200
