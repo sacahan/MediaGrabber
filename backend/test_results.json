@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-03T23:55:55.635133",
+  "cli_youtube_pass": false,
+  "rest_social_pass": true,
+  "overall_pass": false,
+  "benchmark_results": {
+    "cli_youtube": {
+      "status": "FAIL",
+      "output": "\n=== CLI YouTube Download Benchmarks ===\nTests: 20 concurrent downloads\nStarting at: 2025-12-03 23:55:53\n  Test 1/20: 5.00s - \u2717\n  Test 2/20: 6.00s - \u2713\n  Test 3/20: 7.00s - \u2713\n  Test 4/20: 8.00s - \u2713\n  Test 5/20: 9.00s - \u2713\n  Test 6/20: 10.00s - \u2717\n  Test 7/20: 11.00s - \u2713\n  Test 8/20: 12.00s - \u2713\n  Test 9/20: 13.00s - \u2713\n  Test 10/20: 14.00s - \u2713\n  Test 11/20: 5.00s - \u2717\n  Test 12/20: 6.00s - \u2713\n  Test 13/20: 7.00s - \u2713\n  Test 14/20: 8.00s - \u2713\n  Test 15/20: 9.00s - \u2713\n  Test 16/20: 10.00s - \u2717\n  Test 17/20: "
+    },
+    "rest_social": {
+      "status": "PASS",
+      "output": "\n=== REST API Social Media Download Benchmarks ===\nPlatforms: 3\nStarting at: 2025-12-03 23:55:55\n  INSTAGRAM: 98.00s (48.5MB) \u2713\n  FACEBOOK: 91.00s (48.5MB) \u2713\n  X: 91.00s (48.5MB) \u2713\n\n## REST API Social Media Download Benchmarks (SC-002)\n\n**Test Date**: 2025-12-03 23:55:55\n\n### Summary\n\n- **Tests Run**: 3\n- **Success Rate**: 100.0% (3/3)\n- **Average Duration**: 93.33s\n- **Total Test Time**: 0.30s\n\n### Platform Results\n\n| Platform | Status | Duration (s) | Size (MB) |\n|----------|--------|---------"
+    }
+  }
+}
