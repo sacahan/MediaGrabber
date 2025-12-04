@@ -160,7 +160,7 @@ python -m app.cli.main download --url https://youtu.be/abc123 --format mp4
 
 ```bash
 # 終端 1：後端
-python backend/media_grabber_web.py
+cd backend && python -m app.web
 
 # 終端 2：前端
 cd frontend && npm run dev
@@ -178,11 +178,12 @@ curl -X POST http://localhost:8080/api/downloads \
 
 ## 破壞性變更
 
-相對於舊版 (`media_grabber.py`)，本版本進行了重新架構：
+本版本為完整重構，不支援舊版本指令：
 
-- ❌ 舊 CLI 入口 `python backend/media_grabber.py` 已棄用
-- ✅ 新 CLI 入口 `python -m app.cli.main`
-- ❌ 舊 REST 端點 `/download_start`、`/progress/{jobId}` 已移除
+- ❌ 舊 CLI 入口 `python backend/media_grabber.py` 已移除
+- ✅ 新 CLI 入口 `python -m app.cli.main` 啟用
+- ❌ 舊 REST 端點 `/download_start` 已移除
+- ✅ 新 REST 端點 `/api/downloads*` 啟用
 - ✅ 新 REST 端點 `/api/downloads*` 與 `/api/downloads/{jobId}/progress`
 
 **遷移指南**：見 `docs/migration.md`（待補充）

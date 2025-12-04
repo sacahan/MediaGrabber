@@ -11,9 +11,6 @@
 #   down        - 停止並移除容器
 #   logs        - 查看容器日誌
 #   shell       - 進入容器 shell
-#   test        - 執行測試
-#   db          - 啟動 PostgreSQL 容器
-#   db-stop     - 停止 PostgreSQL 容器
 #   clean       - 清理所有 Docker 資源
 #
 

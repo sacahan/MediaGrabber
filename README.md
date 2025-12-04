@@ -83,11 +83,10 @@ Navigate to the `backend` directory and run the Flask application:
 
 ```bash
 cd backend
-python media_grabber_web.py
+python -m app.web
 ```
 
-The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/log/flask.log`.
-**Note:** While Uvicorn is an ASGI server that provides better performance and asynchronous support for ASGI-compatible frameworks, Flask itself is a WSGI application and does not natively benefit from Uvicorn's async features. Uvicorn is used here primarily as a performant server, but true async support would require an ASGI framework like FastAPI or Starlette.
+The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/logs/app.log`.
 
 #### 2. Frontend (Svelte with Tailwind CSS)
 
