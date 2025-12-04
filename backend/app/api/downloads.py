@@ -189,6 +189,7 @@ def _run_download(
             "quiet": False,
             "no_warnings": False,
             "progress_hooks": [lambda d: _progress_hook(job_id, d)],
+            "keepvideo": False,  # Remove intermediate files after merging
         }
 
         # Format-specific options
@@ -204,17 +205,20 @@ def _run_download(
             logger.debug(f"[{job_id}] Configured for MP3 extraction")
         else:
             # MP4 video download - download best video and audio and merge
-            # Using bestvideo+bestaudio/best ensures we get the best quality
-            ydl_opts["format"] = "bestvideo+bestaudio/best"
+            # Format selection: prefer combining separate video+audio streams for better quality
+            # bv*+ba: best video + best audio (any codec)
+            # b: fallback to single file with both video and audio
+            # Explicitly exclude audio-only formats
+            ydl_opts["format"] = "(bv*[ext=mp4]+ba[ext=m4a]/bv*+ba)/b[height>=360]/b"
             ydl_opts["merge_output_format"] = "mp4"
-            # Ensure final output is mp4
+            # Ensure ffmpeg is available for merging
             ydl_opts["postprocessors"] = [
                 {
                     "key": "FFmpegVideoRemuxer",
                     "preferedformat": "mp4",
                 }
             ]
-            logger.debug(f"[{job_id}] Configured for MP4 download")
+            logger.debug(f"[{job_id}] Configured for MP4 video download with merge")
 
         # Add cookies if provided
         if cookies_path and cookies_path.exists():

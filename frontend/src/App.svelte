@@ -470,11 +470,11 @@
     <!-- Hero Section -->
     <div class="text-center mb-12">
       <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl mb-4">
-        <span class="block text-gray-900 dark:text-white">下載您喜愛的</span>
+        <span class="block text-gray-900 dark:text-white pb-4">下載您喜愛的</span>
         <span class="block text-blue-600 dark:text-blue-400">社群媒體影片</span>
       </h1>
       <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400">
-        支援 YouTube, Instagram, Facebook, X (Twitter) 等平台。快速、免費、高品質。
+        支援 YouTube, Instagram, Facebook, X (Twitter) 等平台。
       </p>
     </div>
 

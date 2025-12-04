@@ -22,7 +22,7 @@ COPY ./pyproject.toml ./
 RUN pip install --no-cache-dir .
 
 # Copy backend application
-COPY backend/ ./
+COPY backend/ ./backend/
 
 # Copy frontend build
 COPY --from=builder /app/frontend/dist ./frontend/dist
@@ -40,5 +40,8 @@ ENV MG_PROGRESS_TTL_SECONDS=300
 
 EXPOSE 8080
 
+# Set Python path to include backend directory
+ENV PYTHONPATH=/app/backend
+
 # Use new application entry point
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app.web:create_app()"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--chdir", "/app/backend", "app.web:create_app()"]

@@ -25,8 +25,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 專案根目錄
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 預設環境文件
 ENV_FILE="${PROJECT_DIR}/.env.docker"

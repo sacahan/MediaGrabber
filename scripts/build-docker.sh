@@ -14,7 +14,7 @@ DOCKER_USERNAME="${DOCKER_USERNAME:-sacahan}"
 
 # Function to display usage
 show_usage() {
-    echo "Usage: ./build-and-deploy.sh [OPTIONS]"
+    echo "Usage: ./build-docker.sh [OPTIONS]"
     echo ""
     echo "Options (interactive if not provided):"
     echo "  --platform PLATFORM    Select platform: arm64, amd64, or all"
@@ -62,7 +62,7 @@ done
 # Check required environment variables
 if [ -z "$DOCKER_USERNAME" ]; then
     echo "❌ Error: DOCKER_USERNAME environment variable is required"
-    echo "Usage: DOCKER_USERNAME=yourusername ./build-and-deploy.sh"
+    echo "Usage: DOCKER_USERNAME=yourusername ./build-docker.sh"
     exit 1
 fi
 
@@ -195,8 +195,9 @@ if [ "$ACTION" != "push" ]; then
         --platform "$PLATFORMS" \
         $PUSH_FLAG \
         -t "$FULL_IMAGE_NAME" \
-        -f Dockerfile \
-        .
+        --build-arg VITE_API_BASE_URL="https://media.brianhan.cc" \
+        -f "$SCRIPT_DIR/Dockerfile" \
+        "$PROJECT_ROOT"
 
     echo "✅ Docker image built successfully!"
 else
@@ -214,7 +215,8 @@ if [ "$ACTION" != "build" ]; then
         --platform "$PLATFORMS" \
         --push \
         -t "$FULL_IMAGE_NAME" \
-        -f Dockerfile \
+        --build-arg VITE_API_BASE_URL="https://media.brianhan.cc" \
+        -f "$SCRIPT_DIR/Dockerfile" \
         "$PROJECT_ROOT"
 
     echo "✅ Docker image pushed successfully!"

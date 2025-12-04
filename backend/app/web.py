@@ -57,8 +57,13 @@ SWAGGER_TEMPLATE = {
 def create_app():
     """建立並配置 Flask 應用程式"""
 
-    # 靜態資源路徑
-    frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+    # 靜態資源路徑 - 支援開發環境和 Docker 容器
+    if Path("/app/frontend/dist").exists():
+        # Docker 容器環境
+        frontend_dist = Path("/app/frontend/dist")
+    else:
+        # 開發環境
+        frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
     app = Flask(__name__, static_folder=str(frontend_dist), static_url_path="/")
 
