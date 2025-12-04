@@ -8,6 +8,7 @@
 # 命令：
 #   up          - 啟動容器（後台）
 #   down        - 停止並移除容器
+#   restart     - 重啟容器
 #   pull        - 從 Docker Hub 拉取鏡像
 #   logs        - 查看容器日誌
 #   shell       - 進入容器 shell
@@ -106,6 +107,31 @@ stop_container() {
 	echo -e "${GREEN}✓ 容器已停止${NC}"
 }
 
+# 重啟容器
+restart_container() {
+	echo -e "${BLUE}🔄 重啟容器...${NC}"
+
+	# 檢查容器是否存在
+	if ! docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+		echo -e "${YELLOW}ℹ️  容器不存在，正在啟動新容器...${NC}"
+		start_container
+		return
+	fi
+
+	# 停止現有容器
+	if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+		echo -e "${BLUE}🛑 停止現有容器...${NC}"
+		docker stop "$CONTAINER_NAME"
+	fi
+
+	# 移除舊容器
+	docker rm "$CONTAINER_NAME" 2>/dev/null || true
+
+	# 啟動新容器
+	echo ""
+	start_container
+}
+
 # 拉取 Docker 鏡像
 pull_image() {
 	echo -e "${BLUE}📥 從 Docker Hub 拉取鏡像: $IMAGE_NAME${NC}"
@@ -192,6 +218,7 @@ MediaGrabber Docker 執行腳本
 
   up         啟動容器
   down       停止並移除容器
+  restart    重啟容器
   pull       拉取鏡像
   logs       查看日誌
   shell      進入容器 shell
@@ -256,6 +283,9 @@ main() {
 	down)
 		remove_container
 		;;
+	restart)
+		restart_container
+		;;
 	pull)
 		pull_image
 		;;
@@ -282,6 +312,7 @@ main() {
 		echo "快速命令列表:"
 		echo "  up      - 啟動服務"
 		echo "  down    - 停止並移除服務"
+		echo "  restart - 重啟服務"
 		echo "  pull    - 拉取鏡像"
 		echo "  logs    - 查看日誌"
 		echo "  shell   - 進入容器"
