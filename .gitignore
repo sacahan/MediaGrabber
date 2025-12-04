@@ -9,7 +9,7 @@ build/
 
 # Environment files
 .env
-.env.*
+.env.docker
 .envrc
 
 # Byte-compiled / optimized / DLL files
