@@ -1,4 +1,4 @@
-<!--
+content = r"""<!--
   Refactored Svelte component based on the new prototype.html design.
   This component integrates the modern UI with the existing Svelte logic for state management and API communication.
 -->
@@ -85,7 +85,7 @@
     youtube: {
       name: "YouTube",
       placeholder: "https://www.youtube.com/watch?v=...",
-      format: "mp3",
+      format: "mp3", // Default to mp3 for youtube
       icon: `<path fill-rule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.42 4.814a2.506 2.506 0 0 1-1.768 1.768c-1.594.42-7.812.42-7.812.42s-6.218 0-7.812-.42a2.506 2.506 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.42-4.814a2.506 2.506 0 0 1 1.768-1.768C5.782 5 12 5 12 5s6.218 0 7.812.418ZM15.197 12 10 14.885V9.115L15.197 12Z" clip-rule="evenodd" />`,
     },
     facebook: {
@@ -121,25 +121,16 @@
     loadDownloadHistory();
   });
 
-  // --- Reactive theme update ---
-  $: if (typeof document !== 'undefined') {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }
-
   // --- Download History Functions ---
   function loadDownloadHistory() {
     try {
       const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
       if (stored) {
         const items: DownloadHistoryItem[] = JSON.parse(stored);
+        // Filter out items older than 24 hours
         const cutoffTime = Date.now() - (HISTORY_MAX_AGE_HOURS * 60 * 60 * 1000);
         downloadHistory = items.filter(item => item.completedAt > cutoffTime);
+        // Save cleaned list back
         saveDownloadHistory();
       }
     } catch (e) {
@@ -157,7 +148,9 @@
   }
 
   function addToDownloadHistory(item: DownloadHistoryItem) {
+    // Add to beginning of list (newest first)
     downloadHistory = [item, ...downloadHistory.filter(h => h.jobId !== item.jobId)];
+    // Keep only last 50 items
     if (downloadHistory.length > 50) {
       downloadHistory = downloadHistory.slice(0, 50);
     }
@@ -191,6 +184,11 @@
     return "超過一天";
   }
 
+  function getPlatformIcon(platform: string): string {
+    return platforms[platform]?.icon || platforms.instagram.icon;
+  }
+
+  // --- Functions ---
   function toggleTheme() {
     isDark = !isDark;
     if (isDark) {
@@ -206,9 +204,13 @@
     if (activeTab === tabKey) return;
     activeTab = tabKey;
     selectedFormat = platforms[tabKey].format;
-    handleClear();
+    handleClear(); // Clear all fields when switching tabs
   }
 
+  // --- Progress Polling (T026, T045) ---
+  /**
+   * Start polling job progress and update UI with queue depth and remediation.
+   */
   function startProgressPolling(jobId) {
     if (stopPolling) stopPolling();
 
@@ -221,6 +223,7 @@
       attemptsRemaining = progress.attemptsRemaining;
       remediation = progress.remediation;
 
+      // Update message with progress details
       let msg = progress.message || "";
       if (queueDepth > 0) {
         msg += ` [佇列: ${queuePosition}/${queueDepth}]`;
@@ -230,14 +233,17 @@
       }
       message = msg;
 
+      // Check completion
       if (progress.status === "completed") {
         overlayTitle = "下載完成!";
         downloadBtnDisabled = false;
         clearBtnDisabled = false;
 
+        // Set download URL and show download button
         downloadFileUrl = `${API_BASE_URL}/api/downloads/${jobId}/file`;
         showDownloadButtons = true;
 
+        // Add to download history
         const historyItem: DownloadHistoryItem = {
           jobId: jobId,
           title: progress.message?.replace("下載完成！", "").trim() || url.split("/").pop() || "Downloaded File",
@@ -251,6 +257,7 @@
 
         message = "下載完成！點擊下方按鈕下載檔案";
 
+        // 延遲關閉 overlay，讓使用者看到完成訊息
         setTimeout(() => {
           overlayVisible = false;
           if (stopPolling) {
@@ -262,6 +269,7 @@
         overlayTitle = "下載失敗";
         downloadBtnDisabled = false;
         clearBtnDisabled = false;
+        // 延遲關閉 overlay，讓使用者看到失敗訊息
         setTimeout(() => {
           overlayVisible = false;
           if (stopPolling) {
@@ -285,6 +293,7 @@
     currentJobId = null;
     showDownloadButtons = false;
     downloadFileUrl = null;
+    // Clear progress & remediation state (T026)
     progressState = null;
     queueDepth = 0;
     queuePosition = 0;
@@ -295,6 +304,7 @@
       stopPolling();
       stopPolling = null;
     }
+    // Clear playlist state
     isPlaylist = false;
     playlistJobId = null;
     playlistDownloading = false;
@@ -305,6 +315,7 @@
     failedVideos = [];
   }
 
+  // --- Playlist Functions ---
   function isPlaylistUrl(urlString) {
     return urlString.includes("list=");
   }
@@ -326,12 +337,15 @@
     showDownloadButtons = false;
     isPlaylist = false;
 
+    // Check if it's a playlist URL (YouTube only)
     if (activeTab === "youtube" && isPlaylistUrl(url.trim())) {
       isPlaylist = true;
+      // 播放列表模式 - 顯示選項但不預取 metadata
       title = "YouTube 播放列表";
       return;
     }
 
+    // 驗證 URL 格式
     try {
       const urlObj = new URL(url.trim());
       const supportedDomains = ["youtube.com", "youtu.be", "instagram.com", "facebook.com", "x.com", "twitter.com"];
@@ -340,11 +354,14 @@
         message = "不支援的平台，請輸入 YouTube、Instagram、Facebook 或 X (Twitter) 的網址";
         return;
       }
+      // URL 有效，準備下載
       title = "準備下載...";
     } catch (error) {
       message = "請輸入有效的網址";
     }
   }
+
+  // 播放列表 metadata 功能已移除，直接使用下載 API
 
   async function downloadPlaylist() {
     if (!url.trim() || !isPlaylist) return;
@@ -361,9 +378,11 @@
     failedVideos = [];
 
     try {
+      // 使用新的 downloads API 提交播放列表下載
       const job = await submitDownload(url.trim(), selectedFormat as "mp4" | "mp3");
       playlistJobId = job.jobId;
 
+      // 使用 pollJobProgress 輪詢進度
       stopPolling = pollJobProgress(job.jobId, (progress) => {
         progressState = progress;
         playlistProgress = Math.round(progress.percent);
@@ -403,6 +422,13 @@
     }
   }
 
+  function downloadPlaylistZip() {
+    if (!playlistJobId) return;
+    // 使用新的 API 端點下載檔案
+    const zipUrl = `${API_BASE_URL}/api/downloads/${playlistJobId}/file`;
+    window.location.href = zipUrl;
+  }
+
   const handleUrlInput = debounce(handleUrlInputLogic, 500);
 
   async function handleDownload() {
@@ -418,9 +444,13 @@
     downloadFileUrl = null;
 
     try {
+      // Submit download using new API (T026, T045)
       const job = await submitDownload(url.trim(), selectedFormat as "mp4" | "mp3");
       currentJobId = job.jobId;
+
+      // Start progress polling (T026, T045)
       startProgressPolling(job.jobId);
+
     } catch (error) {
       message = `Error: ${error.message}`;
       overlayVisible = false;
@@ -453,10 +483,12 @@
           aria-label="Toggle Dark Mode"
         >
           {#if isDark}
+            <!-- Sun Icon -->
             <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           {:else}
+            <!-- Moon Icon -->
             <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
@@ -533,14 +565,14 @@
         <!-- Action Buttons -->
         <div class="flex gap-4">
           <button
-            on:click={isPlaylist ? downloadPlaylist : handleDownload}
+            on:click={handleDownload}
             disabled={downloadBtnDisabled || !url}
             class="flex-1 py-4 px-6 rounded-xl text-white font-semibold text-lg shadow-lg transform transition-all duration-200
             {downloadBtnDisabled || !url
               ? "bg-gray-400 cursor-not-allowed opacity-70"
               : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"}"
           >
-            {downloadBtnDisabled ? "處理中..." : (isPlaylist ? "下載播放列表 (ZIP)" : "開始下載")}
+            {downloadBtnDisabled ? "處理中..." : "開始下載"}
           </button>
           <button
             on:click={handleClear}
@@ -603,7 +635,6 @@
                 <button
                   on:click={() => removeFromHistory(item.jobId)}
                   class="text-gray-400 hover:text-red-500 transition-colors"
-                  aria-label="Remove from history"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -660,7 +691,7 @@
           {#if remediation}
             <div class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-left">
               <p class="text-sm text-yellow-800 dark:text-yellow-200 font-medium">建議操作:</p>
-              <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">{remediation.message}</p>
+              <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">{remediation.action}</p>
             </div>
           {/if}
         </div>
@@ -670,6 +701,7 @@
 </div>
 
 <style>
+  /* Custom scrollbar hiding utility */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -686,3 +718,4 @@
     animation: fade-in 0.3s ease-out forwards;
   }
 </style>
+"""

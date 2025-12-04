@@ -18,46 +18,6 @@
       "justMyCode": true
     },
     {
-      "name": "🖥️ CLI: 下載影片 (download)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "app.cli.main",
-      "cwd": "${workspaceFolder}/backend",
-      "console": "integratedTerminal",
-      "args": [
-        "download",
-        "--url",
-        "https://youtu.be/dQw4w9WgXcQ",
-        "--format",
-        "mp4"
-      ],
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}/backend",
-        "MG_OUTPUT_DIR": "${workspaceFolder}/output"
-      },
-      "justMyCode": true
-    },
-    {
-      "name": "🖥️ CLI: 下載播放清單 (playlist)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "app.cli.main",
-      "cwd": "${workspaceFolder}/backend",
-      "console": "integratedTerminal",
-      "args": [
-        "playlist",
-        "--url",
-        "https://youtube.com/playlist?list=...",
-        "--format",
-        "mp3"
-      ],
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}/backend",
-        "MG_OUTPUT_DIR": "${workspaceFolder}/output"
-      },
-      "justMyCode": true
-    },
-    {
       "name": "🎨 Frontend: Svelte Dev Server",
       "type": "node",
       "request": "launch",
@@ -68,36 +28,6 @@
       "env": {
         "VITE_API_BASE_URL": "http://localhost:8080"
       }
-    },
-    {
-      "name": "🧪 Tests: 單元測試",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "pytest",
-      "args": ["backend/tests/unit", "-v", "--tb=short"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "justMyCode": false
-    },
-    {
-      "name": "🧪 Tests: 契約測試",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "pytest",
-      "args": ["backend/tests/contract", "-v", "--tb=short"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "justMyCode": false
-    },
-    {
-      "name": "🧪 Tests: 整合測試",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "pytest",
-      "args": ["backend/tests/integration", "-v", "--tb=short"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "justMyCode": false
     }
   ],
   "compounds": [

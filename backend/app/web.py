@@ -72,7 +72,7 @@ def create_app():
     Swagger(app, config=SWAGGER_CONFIG, template=SWAGGER_TEMPLATE)
 
     # 註冊 API 藍圖
-    app.register_blueprint(downloads_bp, url_prefix="/api")
+    app.register_blueprint(downloads_bp, url_prefix="/api/downloads")
 
     # API 根端點 - 概覽
     @app.route("/api", methods=["GET"])
@@ -177,6 +177,18 @@ def _setup_logging(app):
     file_handler.setFormatter(formatter)
     file_handler.setLevel(getattr(logging, log_level, logging.INFO))
 
+    # Console handler for stdout
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(getattr(logging, log_level, logging.INFO))
+
+    # 配置 root logger 以捕獲所有模塊的日誌
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level, logging.INFO))
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    # 配置 Flask app logger
     app.logger.addHandler(file_handler)
     app.logger.setLevel(getattr(logging, log_level, logging.INFO))
 
