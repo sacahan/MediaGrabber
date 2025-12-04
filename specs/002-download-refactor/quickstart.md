@@ -35,7 +35,7 @@ ruff check backend/
 Start the Flask service (used by REST + frontend):
 
 ```bash
-python backend/media_grabber_web.py
+cd backend && python -m app.web
 ```
 
 Environment knobs:

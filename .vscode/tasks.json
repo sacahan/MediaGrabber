@@ -5,7 +5,10 @@
       "label": "backend-start",
       "type": "shell",
       "command": "python",
-      "args": ["backend/media_grabber_web.py"],
+      "args": ["-m", "app.web"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
       "isBackground": true,
       "problemMatcher": {
         "pattern": {

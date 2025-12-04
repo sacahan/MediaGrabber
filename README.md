@@ -176,6 +176,52 @@ The CLI shares the same backend services as the Web UI, so platform/format suppo
 
 **Note**: Regular Facebook videos (non-Reels) may work better. This issue primarily affects Facebook Reels format.
 
+## 🔄 架構遷移說明 (v1.0)
+
+本版本（v1.0）進行了完整的統一下載管線重構。如果您是從舊版升級，請注意以下變更：
+
+### ✅ 新推薦方式
+
+#### CLI 命令
+
+```bash
+# 下載單支影片
+python -m app.cli.main download --url https://youtu.be/... --format mp4
+
+# 下載播放清單
+python -m app.cli.main playlist --url https://youtube.com/playlist?... --format zip
+
+# 查詢任務狀態
+python -m app.cli.main status --job-id <jobId>
+
+# 重試失敗任務
+python -m app.cli.main retry --job-id <jobId>
+```
+
+#### Web 服務
+
+```bash
+# 啟動新 Flask 後端（含 REST API）
+cd backend && python -m app.web
+
+# 或使用工作任務
+npm run backend-start
+
+# 啟動 Svelte 前端（另開終端）
+cd frontend && npm run dev
+
+# 開啟瀏覽器
+open http://localhost:5173
+```
+
+### 📚 詳細遷移指南
+
+見 `docs/migration.md` 了解更多：
+
+- 架構變更對比
+- 相容性計劃
+- 長期路線圖
+
 ## Development
 
 ### Requirements
@@ -193,13 +239,16 @@ The CLI shares the same backend services as the Web UI, so platform/format suppo
 
 ```txt
 MediaGrabber/
-├── backend/             # Flask REST API and Python core logic
-│   ├── media_grabber.py
-│   ├── media_grabber_web.py
+├── backend/             # Python REST API and core services
+│   ├── app/
+│   │   ├── cli/         # New unified CLI commands
+│   │   ├── api/         # REST API endpoints
+│   │   ├── services/    # Download, transcode, remediation services
+│   │   ├── models/      # Data models (DownloadJob, ProgressState, etc.)\n│   │   └── utils/       # Helpers and settings
 │   ├── pyproject.toml   # Python dependencies configuration
 │   ├── .venv/           # Python virtual environment
 │   ├── __pycache__/
-│   └── log/             # Flask application logs
+│   └── logs/            # Application logs
 ├── frontend/            # Svelte Single Page Application (SPA) with Tailwind CSS
 │   ├── node_modules/
 │   ├── public/
