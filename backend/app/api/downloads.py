@@ -138,6 +138,8 @@ def _get_platform(url: str) -> Optional[str]:
             return "facebook"
         elif "x.com" in netloc or "twitter.com" in netloc:
             return "x"
+        elif "threads.net" in netloc or "threads.com" in netloc:
+            return "threads"
         return None
     except Exception:
         return None
@@ -161,12 +163,227 @@ def _update_job(job_id: str, **kwargs) -> None:
             logger.debug(f"[{job_id}] Job updated: {kwargs}")
 
 
+def _download_threads_manual(
+    job_id: str, url: str, cookies_path: Optional[Path] = None
+) -> Optional[Path]:
+    """
+    Download Threads video by manually parsing the page.
+
+    yt-dlp doesn't officially support Threads yet, so we need to:
+    1. Fetch the page HTML with cookies
+    2. Extract video URL from embedded JSON data
+    3. Download the video directly
+
+    Returns the downloaded file path, or None if failed.
+    """
+    import json
+    import re
+
+    import requests
+    from http.cookiejar import MozillaCookieJar
+
+    logger.info(f"[{job_id}] Using manual Threads parser...")
+    _update_job(
+        job_id,
+        status="downloading",
+        stage="parsing",
+        percent=10,
+        message="解析 Threads 頁面...",
+    )
+
+    # Extract post ID from URL
+    match = re.search(r"/(?:post|t)/([^/?#&]+)", url)
+    if not match:
+        raise Exception("無法從 URL 提取貼文 ID")
+
+    post_id = match.group(1)
+    logger.info(f"[{job_id}] Threads post ID: {post_id}")
+
+    # Set up session with cookies
+    session = requests.Session()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+    }
+
+    # Load cookies if provided
+    if cookies_path and cookies_path.exists():
+        try:
+            cookie_jar = MozillaCookieJar(str(cookies_path))
+            cookie_jar.load(ignore_discard=True, ignore_expires=True)
+            session.cookies = cookie_jar
+            logger.info(f"[{job_id}] Loaded {len(cookie_jar)} cookies")
+        except Exception as e:
+            logger.warning(f"[{job_id}] Failed to load cookies: {e}")
+
+    # Fetch the page
+    _update_job(job_id, percent=20, message="下載頁面內容...")
+    response = session.get(url, headers=headers, timeout=30)
+    response.raise_for_status()
+
+    webpage = response.text
+    logger.info(f"[{job_id}] Page size: {len(webpage)} bytes")
+
+    # Search for JSON data containing post info
+    _update_job(job_id, percent=30, message="提取影片資訊...")
+
+    video_url = None
+
+    # Strategy 1: Find video_url directly in HTML
+    video_url_match = re.search(r'"video_url"\s*:\s*"([^"]+)"', webpage)
+    if video_url_match:
+        video_url = video_url_match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+        logger.info(f"[{job_id}] Found video_url in HTML")
+
+    # Strategy 2: Look for CDN video links
+    if not video_url:
+        cdn_match = re.search(
+            r'(https?://[^"\']*?scontent[^"\']*?\.mp4[^"\']*)', webpage
+        )
+        if cdn_match:
+            video_url = cdn_match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+            logger.info(f"[{job_id}] Found CDN video URL")
+
+    # Strategy 3: Parse JSON script tags
+    if not video_url:
+        json_scripts = re.findall(
+            r'<script type="application/json"[^>]*?\sdata-sjs[^>]*?>(.*?)</script>',
+            webpage,
+            re.DOTALL | re.IGNORECASE,
+        )
+        logger.info(f"[{job_id}] Found {len(json_scripts)} JSON script tags")
+
+        for script in json_scripts:
+            if post_id not in script:
+                continue
+
+            try:
+                parsed = json.loads(script)
+
+                # Recursive search for video_versions
+                def find_video_url(data, depth=0):
+                    if depth > 30:
+                        return None
+                    if isinstance(data, dict):
+                        if "video_versions" in data and data.get("video_versions"):
+                            versions = data["video_versions"]
+                            if versions:
+                                # Get highest quality (first one is usually best)
+                                return versions[0].get("url")
+                        for value in data.values():
+                            result = find_video_url(value, depth + 1)
+                            if result:
+                                return result
+                    elif isinstance(data, list):
+                        for item in data:
+                            result = find_video_url(item, depth + 1)
+                            if result:
+                                return result
+                    return None
+
+                found_url = find_video_url(parsed)
+                if found_url:
+                    video_url = found_url.replace("\\u0026", "&").replace("\\/", "/")
+                    logger.info(f"[{job_id}] Found video URL in JSON data")
+                    break
+            except json.JSONDecodeError:
+                continue
+
+    if not video_url:
+        raise Exception("無法從頁面提取影片 URL，可能需要登入或此貼文不包含影片")
+
+    # Download the video
+    _update_job(job_id, percent=50, message="下載影片中...")
+    logger.info(f"[{job_id}] Downloading video from: {video_url[:80]}...")
+
+    video_response = session.get(video_url, headers=headers, stream=True, timeout=60)
+    video_response.raise_for_status()
+
+    # Get total size for progress
+    total_size = int(video_response.headers.get("content-length", 0))
+
+    # Create output directory and file
+    job_output_dir = OUTPUT_DIR / job_id
+    job_output_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_title = re.sub(r'[<>:"/\\|?*]', "_", f"threads_{post_id}")
+    output_file = job_output_dir / f"{safe_title}.mp4"
+
+    downloaded = 0
+    with open(output_file, "wb") as f:
+        for chunk in video_response.iter_content(chunk_size=8192):
+            f.write(chunk)
+            downloaded += len(chunk)
+            if total_size > 0:
+                percent = min(95, 50 + int((downloaded / total_size) * 45))
+                _update_job(
+                    job_id,
+                    percent=percent,
+                    downloadedBytes=downloaded,
+                    totalBytes=total_size,
+                    message=f"下載中... {percent}%",
+                )
+
+    file_size = output_file.stat().st_size
+    logger.info(f"[{job_id}] Downloaded: {output_file} ({file_size} bytes)")
+
+    return output_file
+
+
 def _run_download(
     job_id: str, url: str, fmt: str, cookies_path: Optional[Path] = None
 ) -> None:
-    """Execute download in background thread using yt-dlp."""
+    """Execute download in background thread using yt-dlp or manual parser."""
     logger.info(f"[{job_id}] Starting download: url={url}, format={fmt}")
 
+    platform = _get_platform(url)
+
+    # Use manual parser for Threads (yt-dlp doesn't support it yet)
+    if platform == "threads":
+        try:
+            _update_job(
+                job_id,
+                status="downloading",
+                stage="initializing",
+                percent=5,
+                message="初始化 Threads 下載...",
+            )
+
+            downloaded_file = _download_threads_manual(job_id, url, cookies_path)
+
+            if downloaded_file and downloaded_file.exists():
+                file_size = downloaded_file.stat().st_size
+                _update_job(
+                    job_id,
+                    status="completed",
+                    stage="completed",
+                    percent=100,
+                    message="下載完成！",
+                    title=downloaded_file.stem,
+                    filePath=str(downloaded_file),
+                    fileSize=file_size,
+                    downloadUrl=f"/api/downloads/{job_id}/file",
+                )
+            else:
+                raise Exception("下載的檔案不存在")
+
+        except Exception as e:
+            logger.error(f"[{job_id}] Threads download failed: {e}", exc_info=True)
+            _update_job(
+                job_id,
+                status="failed",
+                stage="error",
+                percent=0,
+                message=f"下載失敗: {str(e)}",
+                error=str(e),
+            )
+        return
+
+    # Use yt-dlp for other platforms
     try:
         from yt_dlp import YoutubeDL
 
@@ -220,21 +437,22 @@ def _run_download(
             ]
             logger.debug(f"[{job_id}] Configured for MP4 video download with merge")
 
-        # Add cookies if provided
+        # Add cookies if provided (takes priority over platform-specific defaults)
         if cookies_path and cookies_path.exists():
             ydl_opts["cookiefile"] = str(cookies_path)
             logger.info(f"[{job_id}] Using cookies from: {cookies_path}")
-
-        # Platform-specific options
-        platform = _get_platform(url)
-        if platform == "instagram":
-            # Instagram often needs cookies for best results
-            instagram_cookies = (
-                Path(__file__).parent.parent.parent / "cookies" / "instagram.txt"
-            )
-            if instagram_cookies.exists():
-                ydl_opts["cookiefile"] = str(instagram_cookies)
-                logger.info(f"[{job_id}] Using Instagram cookies: {instagram_cookies}")
+        else:
+            # Platform-specific default cookies (Threads is handled separately above)
+            if platform == "instagram":
+                # Instagram often needs cookies for best results
+                instagram_cookies = (
+                    Path(__file__).parent.parent.parent / "cookies" / "instagram.txt"
+                )
+                if instagram_cookies.exists():
+                    ydl_opts["cookiefile"] = str(instagram_cookies)
+                    logger.info(
+                        f"[{job_id}] Using Instagram cookies: {instagram_cookies}"
+                    )
 
         logger.info(f"[{job_id}] yt-dlp options configured, starting download...")
         _update_job(job_id, stage="downloading", percent=10, message="正在下載...")
@@ -355,17 +573,22 @@ def submit_download() -> tuple:
           properties:
             url:
               type: string
-              description: 媒體 URL（支援 YouTube、Instagram、Facebook、X）
+              description: 媒體 URL（支援 YouTube、Instagram、Facebook、X、Threads）
             format:
               type: string
               enum: [mp4, mp3]
               description: 輸出格式
+            cookiesBase64:
+              type: string
+              description: Base64 編碼的 Netscape cookies.txt 內容（用於需要認證的平台如 Threads）
     responses:
       202:
         description: 任務已接受
       400:
         description: 請求參數錯誤
     """
+    import base64
+
     data = request.get_json() or {}
     logger.info(f"POST /api/downloads - Request data: {data}")
 
@@ -380,6 +603,7 @@ def submit_download() -> tuple:
 
     url = data["url"]
     fmt = data["format"]
+    cookies_base64 = data.get("cookiesBase64")
 
     # Validate URL
     if not _is_valid_url(url):
@@ -391,9 +615,45 @@ def submit_download() -> tuple:
         logger.warning(f"Invalid format: {fmt}")
         return jsonify({"error": "Invalid format; must be one of: mp4, mp3"}), 400
 
-    # Create job
-    job_id = str(uuid.uuid4())
+    # Process cookies if provided
+    cookies_path = None
     platform = _get_platform(url)
+
+    if cookies_base64:
+        try:
+            # Decode base64 cookies
+            cookies_content = base64.b64decode(cookies_base64).decode("utf-8")
+            logger.debug(
+                f"Decoded cookies content length: {len(cookies_content)} chars"
+            )
+
+            # Create job-specific cookies file
+            job_id = str(uuid.uuid4())
+            job_cookies_dir = OUTPUT_DIR / job_id
+            job_cookies_dir.mkdir(parents=True, exist_ok=True)
+            cookies_path = job_cookies_dir / "cookies.txt"
+            cookies_path.write_text(cookies_content, encoding="utf-8")
+            logger.info(f"[{job_id}] Cookies saved to: {cookies_path}")
+        except Exception as e:
+            logger.warning(f"Failed to decode cookies: {e}")
+            return jsonify({"error": f"Invalid cookies format: {str(e)}"}), 400
+    else:
+        job_id = str(uuid.uuid4())
+
+    # Validate Threads requires cookies
+    if platform == "threads" and not cookies_path:
+        # Check for default cookies files
+        threads_cookies = (
+            Path(__file__).parent.parent.parent / "cookies" / "threads.txt"
+        )
+        instagram_cookies = (
+            Path(__file__).parent.parent.parent / "cookies" / "instagram.txt"
+        )
+        if not threads_cookies.exists() and not instagram_cookies.exists():
+            logger.warning(
+                f"[{job_id}] Threads download requires cookies but none provided"
+            )
+            # Allow the download to proceed - yt-dlp will handle the error
 
     job = {
         "jobId": job_id,
@@ -413,7 +673,7 @@ def submit_download() -> tuple:
 
     # Start download in background thread
     thread = threading.Thread(
-        target=_run_download, args=(job_id, url, fmt), daemon=True
+        target=_run_download, args=(job_id, url, fmt, cookies_path), daemon=True
     )
     thread.start()
     logger.info(f"[{job_id}] Background download thread started")
