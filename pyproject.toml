@@ -16,6 +16,7 @@ dependencies = [
     "pytubefix>=10.3.5",
     "tqdm",
     "Flask-CORS",
+    "flasgger>=0.9.7",
     "gunicorn",
     "pre-commit",
     "ruff",

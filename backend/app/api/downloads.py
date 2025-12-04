@@ -40,7 +40,36 @@ def _is_valid_format(fmt: str) -> bool:
 
 @downloads_bp.route("", methods=["POST"])
 def submit_download() -> tuple:
-    """Submit a new download job."""
+    """
+    提交新的下載任務
+    ---
+    tags:
+      - downloads
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - url
+            - format
+          properties:
+            url:
+              type: string
+              description: 媒體 URL（支援 YouTube、Instagram、Facebook、X）
+              example: https://youtu.be/dQw4w9WgXcQ
+            format:
+              type: string
+              enum: [mp4, mp3]
+              description: 輸出格式
+              example: mp4
+    responses:
+      202:
+        description: 任務已接受
+      400:
+        description: 請求參數錯誤
+    """
     data = request.get_json() or {}
 
     # Validate required fields
@@ -78,9 +107,22 @@ def submit_download() -> tuple:
 
 @downloads_bp.route("/<job_id>", methods=["GET"])
 def get_job_status(job_id: str) -> tuple:
-    """Get job status and artifacts.
-
-    Returns job details including compression statistics and remediation (T033).
+    """
+    取得任務狀態與結果
+    ---
+    tags:
+      - downloads
+    parameters:
+      - name: job_id
+        in: path
+        type: string
+        required: true
+        description: 任務 ID
+    responses:
+      200:
+        description: 任務詳細資訊
+      404:
+        description: 任務不存在
     """
     if job_id not in _jobs:
         return jsonify({"error": f"Job {job_id} not found"}), 404
@@ -111,9 +153,22 @@ def get_job_status(job_id: str) -> tuple:
 
 @downloads_bp.route("/<job_id>/progress", methods=["GET"])
 def get_job_progress(job_id: str) -> tuple:
-    """Get real-time progress for a job.
-
-    Returns progress state with queue metrics and retry/remediation details.
+    """
+    取得任務即時進度
+    ---
+    tags:
+      - downloads
+    parameters:
+      - name: job_id
+        in: path
+        type: string
+        required: true
+        description: 任務 ID
+    responses:
+      200:
+        description: 任務進度資訊
+      404:
+        description: 任務不存在
     """
     if job_id not in _jobs:
         return jsonify({"error": f"Job {job_id} not found"}), 404

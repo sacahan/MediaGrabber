@@ -4,6 +4,7 @@ MediaGrabber Web Service - Flask REST API Server
 
 新統一的 Flask 應用入點，整合：
 - 新的 REST API 端點 (/api/downloads/*)
+- Swagger/OpenAPI 文檔 (/api/docs)
 - Svelte 前端靜態資源服務
 - 進度查詢和下載管理
 """
@@ -11,11 +12,46 @@ MediaGrabber Web Service - Flask REST API Server
 import os
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+from flasgger import Swagger
 
 # 導入新的 API 藍圖
 from app.api.downloads import downloads_bp
+
+# Swagger 配置
+SWAGGER_CONFIG = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec",
+            "route": "/api/apispec.json",
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/api/docs",
+}
+
+SWAGGER_TEMPLATE = {
+    "info": {
+        "title": "MediaGrabber API",
+        "description": "媒體下載服務 API - 支援 YouTube、Instagram、Facebook、X (Twitter) 等平台",
+        "version": "1.0.0",
+        "contact": {
+            "name": "MediaGrabber",
+            "url": "https://github.com/sacahan/MediaGrabber",
+        },
+    },
+    "basePath": "/api",
+    "schemes": ["http", "https"],
+    "tags": [
+        {"name": "downloads", "description": "下載任務管理"},
+        {"name": "system", "description": "系統資訊"},
+    ],
+}
 
 
 def create_app():
@@ -32,14 +68,58 @@ def create_app():
     # 設定日誌
     _setup_logging(app)
 
+    # 初始化 Swagger
+    Swagger(app, config=SWAGGER_CONFIG, template=SWAGGER_TEMPLATE)
+
     # 註冊 API 藍圖
     app.register_blueprint(downloads_bp, url_prefix="/api")
+
+    # API 根端點 - 概覽
+    @app.route("/api", methods=["GET"])
+    @app.route("/api/", methods=["GET"])
+    def api_overview():
+        """
+        API 概覽
+        ---
+        tags:
+          - system
+        responses:
+          200:
+            description: API 資訊與可用端點清單
+        """
+        return jsonify(
+            {
+                "name": "MediaGrabber API",
+                "version": "1.0.0",
+                "description": "媒體下載服務 API - 支援 YouTube、Instagram、Facebook、X (Twitter)",
+                "documentation": "/api/docs",
+                "health": "/health",
+                "endpoints": {
+                    "downloads": {
+                        "POST /api/downloads": "提交新的下載任務",
+                        "GET /api/downloads/<job_id>": "取得任務狀態與結果",
+                        "GET /api/downloads/<job_id>/progress": "取得任務即時進度",
+                    },
+                },
+                "supportedPlatforms": [
+                    "youtube.com",
+                    "youtu.be",
+                    "instagram.com",
+                    "facebook.com",
+                    "x.com",
+                    "twitter.com",
+                ],
+                "supportedFormats": ["mp4", "mp3"],
+            }
+        ), 200
 
     # 前端路由（SPA fallback）
     @app.route("/")
     @app.route("/<path:path>")
     def serve_frontend(path="index.html"):
         """服務 Svelte 前端應用"""
+        if path.startswith("api") or path.startswith("flasgger_static"):
+            return {"error": "Not found"}, 404
         if path != "index.html" and (frontend_dist / path).exists():
             return app.send_static_file(path)
         return app.send_static_file("index.html")
@@ -47,6 +127,15 @@ def create_app():
     # 健康檢查端點
     @app.route("/health", methods=["GET"])
     def health_check():
+        """
+        健康檢查
+        ---
+        tags:
+          - system
+        responses:
+          200:
+            description: 服務健康狀態
+        """
         return {"status": "ok", "service": "MediaGrabber"}, 200
 
     return app
