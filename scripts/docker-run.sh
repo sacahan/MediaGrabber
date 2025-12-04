@@ -30,21 +30,10 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${PROJECT_DIR}/.env.docker"
 
 # Docker 鏡像和容器名稱
-IMAGE_NAME="sacahan/casual-trader:latest"
-CONTAINER_NAME="casual-trader"
-HOST_PORT="${HOST_PORT:-8877}"
+IMAGE_NAME="sacahan/media-grabber:latest"
+CONTAINER_NAME="media-grabber"
+HOST_PORT="${HOST_PORT:-8080}"
 
-# Docker 網路配置 - 用於與 casual-market 容器通訊
-NETWORK_NAME="casual-network"
-
-# 主機 IP 地址 (Linux 上用於連接主機服務)
-HOST_IP="${HOST_IP:-127.0.0.1}"
-
-# Memory MCP 資料庫存儲位置
-MEMORY_DB_HOST_PATH="${PROJECT_DIR}/memory"
-
-# GitHub Copilot 認證資料路徑
-GITHUB_COPILOT_AUTH_PATH="${PROJECT_DIR}/github_copilot"
 
 # 日誌存儲目錄
 LOGS_DIR="${PROJECT_DIR}/logs"
