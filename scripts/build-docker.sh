@@ -1,6 +1,6 @@
 #!/bin/zsh
 # ============================================
-# Build and Deploy Script for CasualTrader
+# Build and Deploy Script for MediaGrabber
 # ============================================
 set -e
 
@@ -8,7 +8,7 @@ SCRIPT_DIR="$( cd "$( dirname "${ZSH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
 
 # Configuration
-DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-casual-trader}"
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-media-grabber}"
 DOCKER_TAG="${DOCKER_TAG:-latest}"
 DOCKER_USERNAME="${DOCKER_USERNAME:-sacahan}"
 
@@ -147,7 +147,7 @@ FULL_IMAGE_NAME="$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$DOCKER_TAG"
 
 echo ""
 echo "================================================"
-echo "CasualTrader - Build and Deploy"
+echo "MediaGrabber - Build and Deploy"
 echo "================================================"
 echo "Image: $FULL_IMAGE_NAME"
 echo "Platforms: $PLATFORMS"
@@ -195,7 +195,7 @@ if [ "$ACTION" != "push" ]; then
         --platform "$PLATFORMS" \
         $PUSH_FLAG \
         -t "$FULL_IMAGE_NAME" \
-        -f scripts/Dockerfile \
+        -f Dockerfile \
         .
 
     echo "✅ Docker image built successfully!"
@@ -214,7 +214,7 @@ if [ "$ACTION" != "build" ]; then
         --platform "$PLATFORMS" \
         --push \
         -t "$FULL_IMAGE_NAME" \
-        -f scripts/Dockerfile \
+        -f Dockerfile \
         "$PROJECT_ROOT"
 
     echo "✅ Docker image pushed successfully!"

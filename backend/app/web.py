@@ -53,26 +53,48 @@ def create_app():
 
 
 def _setup_logging(app):
-    """配置應用日誌"""
+    """配置應用日誌（從環境變數讀取設定）"""
     import logging
     from logging.handlers import RotatingFileHandler
 
-    logs_dir = Path(__file__).parent.parent / "logs"
-    logs_dir.mkdir(exist_ok=True)
+    # 從環境變數讀取日誌設定
+    log_dir = os.getenv("MG_LOG_DIR", str(Path(__file__).parent.parent / "logs"))
+    log_level = os.getenv("MG_LOG_LEVEL", "INFO").upper()
+    log_format = os.getenv("MG_LOG_FORMAT", "text")
+    log_max_bytes = int(os.getenv("MG_LOG_MAX_BYTES", "10485760"))  # 10MB
+    log_backup_count = int(os.getenv("MG_LOG_BACKUP_COUNT", "5"))
+
+    # 確保日誌目錄存在
+    logs_dir = Path(log_dir)
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    # 設定日誌格式
+    if log_format == "json":
+        formatter = logging.Formatter(
+            '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
+            '"name": "%(name)s", "message": "%(message)s"}'
+        )
+    else:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
     # 文件日誌處理器
     file_handler = RotatingFileHandler(
         logs_dir / "app.log",
-        maxBytes=10485760,  # 10MB
-        backupCount=5,
+        maxBytes=log_max_bytes,
+        backupCount=log_backup_count,
     )
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(getattr(logging, log_level, logging.INFO))
 
     app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
+    app.logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+    # 記錄日誌配置
+    app.logger.info(
+        f"日誌配置完成: 目錄={logs_dir}, 級別={log_level}, 格式={log_format}"
+    )
 
 
 if __name__ == "__main__":
