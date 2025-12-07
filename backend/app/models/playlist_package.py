@@ -1,4 +1,8 @@
-"""Structures describing playlist packaging results."""
+"""播放清單封裝結果：描述播放清單打包結果的資料結構。
+
+當使用者下載播放清單時，每個項目都會分別處理，最後打包成 ZIP 檔。
+此模組定義了用於追蹤每個項目的處理結果。
+"""
 
 from __future__ import annotations
 
@@ -9,15 +13,25 @@ from typing import List, Optional
 
 @dataclass(slots=True)
 class PlaylistItemResult:
-    """Represents the outcome of an item inside a playlist submission."""
+    """播放清單項目結果：代表播放清單中單個項目的處理結果。
 
-    index: int
-    title: str
-    status: str
-    artifact_path: Optional[Path] = None
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
-    remediation: Optional[str] = None
+    屬性:
+        index: 項目在播放清單中的索引位置
+        title: 項目標題
+        status: 處理狀態（completed 或 failed）
+        artifact_path: 產出檔案路徑（如果成功）
+        error_code: 錯誤代碼（如果失敗）
+        error_message: 錯誤訊息（如果失敗）
+        remediation: 補救建議（如果失敗）
+    """
+
+    index: int  # 項目索引
+    title: str  # 項目標題
+    status: str  # 狀態（completed/failed）
+    artifact_path: Optional[Path] = None  # 產出檔案路徑
+    error_code: Optional[str] = None  # 錯誤代碼
+    error_message: Optional[str] = None  # 錯誤訊息
+    remediation: Optional[str] = None  # 補救建議
 
     def as_dict(self) -> dict:
         return {

@@ -55,19 +55,31 @@ SWAGGER_TEMPLATE = {
 
 
 def create_app():
-    """建立並配置 Flask 應用程式"""
+    """建立並配置 Flask 應用程式。
+
+    此函式是應用程式的主要入口點，負責：
+    1. 建立 Flask 應用實例
+    2. 配置 CORS 支援
+    3. 初始化 Swagger/OpenAPI 文檔
+    4. 註冊所有 API 藍圖
+    5. 配置前端 SPA 路由
+
+    Returns:
+        配置完成的 Flask 應用實例
+    """
 
     # 靜態資源路徑 - 支援開發環境和 Docker 容器
     if Path("/app/frontend/dist").exists():
-        # Docker 容器環境
+        # Docker 容器環境：使用絕對路徑
         frontend_dist = Path("/app/frontend/dist")
     else:
-        # 開發環境
+        # 開發環境：使用相對路徑
         frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
+    # 建立 Flask 應用，配置靜態檔案服務
     app = Flask(__name__, static_folder=str(frontend_dist), static_url_path="/")
 
-    # 啟用 CORS
+    # 啟用 CORS：允許跨域請求，支援開發環境中前後端分離
     CORS(app)
 
     # 設定日誌
@@ -122,11 +134,28 @@ def create_app():
     @app.route("/")
     @app.route("/<path:path>")
     def serve_frontend(path="index.html"):
-        """服務 Svelte 前端應用"""
+        """服務 Svelte 前端應用：處理 SPA 路由。
+
+        此函式實現了 Single Page Application (SPA) 的路由備援機制：
+        1. 如果是 API 路徑，返回 404
+        2. 如果請求的檔案存在，直接返回該檔案
+        3. 否則返回 index.html，讓前端路由處理
+
+        這種機制允許 Vue/React/Svelte 等 SPA 框架使用客戶端路由。
+
+        Args:
+            path: 請求的路徑，預設為 "index.html"
+
+        Returns:
+            請求的檔案或 index.html
+        """
+        # 排除 API 和 Swagger 路徑
         if path.startswith("api") or path.startswith("flasgger_static"):
             return {"error": "Not found"}, 404
+        # 如果檔案存在，直接返回
         if path != "index.html" and (frontend_dist / path).exists():
             return app.send_static_file(path)
+        # SPA fallback: 所有其他路徑都返回 index.html
         return app.send_static_file("index.html")
 
     # 健康檢查端點
@@ -147,16 +176,29 @@ def create_app():
 
 
 def _setup_logging(app):
-    """配置應用日誌（從環境變數讀取設定）"""
+    """配置應用日誌：從環境變數讀取設定。
+
+    此函式負責設定整個應用的日誌系統，包括：
+    - 文件日誌：寫入 logs/app.log，支援自動輪替
+    - 控制台日誌：輸出到 stdout
+    - 支援 JSON 和文字格式
+
+    支援的環境變數：
+    - MG_LOG_DIR: 日誌目錄
+    - MG_LOG_LEVEL: 日誌級別 (DEBUG/INFO/WARNING/ERROR)
+    - MG_LOG_FORMAT: 日誌格式 (text/json)
+    - MG_LOG_MAX_BYTES: 單個日誌檔最大大小
+    - MG_LOG_BACKUP_COUNT: 保留的日誌檔數量
+    """
     import logging
     from logging.handlers import RotatingFileHandler
 
-    # 從環境變數讀取日誌設定
+    # 從環境變數讀取日誌配置
     log_dir = os.getenv("MG_LOG_DIR", str(Path(__file__).parent.parent / "logs"))
     log_level = os.getenv("MG_LOG_LEVEL", "INFO").upper()
-    log_format = os.getenv("MG_LOG_FORMAT", "text")
+    log_format = os.getenv("MG_LOG_FORMAT", "text")  # text 或 json
     log_max_bytes = int(os.getenv("MG_LOG_MAX_BYTES", "10485760"))  # 10MB
-    log_backup_count = int(os.getenv("MG_LOG_BACKUP_COUNT", "5"))
+    log_backup_count = int(os.getenv("MG_LOG_BACKUP_COUNT", "5"))  # 保留 5 個舊檔
 
     # 確保日誌目錄存在
     logs_dir = Path(log_dir)

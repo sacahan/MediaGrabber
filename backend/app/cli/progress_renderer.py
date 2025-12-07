@@ -1,4 +1,11 @@
-"""CLI progress rendering for real-time download feedback."""
+"""進度渲染器：為 CLI 提供即時下載進度顯示。
+
+此模組負責在終端機中呈現美觀的進度資訊，包括：
+- 進度百分比
+- 下載速度
+- 預估剩餘時間
+- 重試資訊和補救建議
+"""
 
 from __future__ import annotations
 
@@ -9,12 +16,26 @@ from ..models.progress_state import ProgressState
 
 
 class ProgressRenderer:
-    """Render progress to console with live updates."""
+    """進度渲染器：在控制台中即時顯示下載進度。
+
+    此類別負責將 ProgressState 轉換為終端機友好的輸出格式。
+    使用執行緒鎖保證多執行緒環境下的輸出不會混亂。
+
+    屬性:
+        _verbose: 是否顯示詳細資訊
+        _lock: 執行緒鎖，保證輸出的原子性
+        _last_percent: 上次顯示的進度百分比，用於保證進度單調遞增
+    """
 
     def __init__(self, verbose: bool = False) -> None:
+        """初始化進度渲染器。
+
+        Args:
+            verbose: 是否顯示詳細資訊（預設 False）
+        """
         self._verbose = verbose
-        self._lock = threading.Lock()
-        self._last_percent: float = 0.0
+        self._lock = threading.Lock()  # 執行緒鎖
+        self._last_percent: float = 0.0  # 追蹤最後一次的進度
 
     def render(self, state: ProgressState) -> None:
         """Render a progress state to stdout."""

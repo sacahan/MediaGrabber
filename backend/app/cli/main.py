@@ -89,8 +89,12 @@ def download(url: str, format: str, cookies: Path | None) -> None:
     if cookies:
         click.echo(f"Using cookies from: {cookies}")
 
-    # TODO: Implement actual download logic using yt-dlp
-    # This is a placeholder - actual implementation follows
+    # 注意：實際的下載實現在 api/downloads.py 中
+    # CLI 目前是一個簡化的介面，完整功能建議使用 REST API
+    # 未來版本會整合 DownloadService 提供統一的介面
+    click.echo("\n提示：目前請使用 Web API 進行完整的下載功能")
+    click.echo("啟動 Web 服務：python -m app.web")
+    click.echo("然後訪問：http://127.0.0.1:8080")
 
 
 @cli.command()

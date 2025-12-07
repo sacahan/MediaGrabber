@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import asyncio
 import logging
 import os
 import shutil
@@ -15,6 +16,17 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, request, send_file
 
+# 導入轉碼相關服務
+from ..services.transcode_service import TranscodeService
+from ..services.transcode_queue import TranscodeQueue
+from ..services.progress_bus import ProgressBus
+from ..models.transcode_profile import (
+    PROFILE_FAST_1080P30_PRIMARY,
+    PROFILE_FAST_1080P30_FALLBACK,
+    TranscodeProfilePair,
+)
+from ..models.download_job import DownloadJob
+
 # Configure module logger
 logger = logging.getLogger(__name__)
 
@@ -23,6 +35,17 @@ downloads_bp = Blueprint("downloads", __name__)
 # In-memory job store (production would use DB)
 _jobs: dict = {}
 _jobs_lock = threading.Lock()
+
+# 初始化轉碼服務
+_progress_bus = ProgressBus(ttl_seconds=3600)
+_transcode_queue = TranscodeQueue(max_workers=2)  # 最多同時轉碼 2 個檔案
+_transcode_service = TranscodeService(_transcode_queue, _progress_bus)
+
+# 轉碼設定檔配對（主要 + 備用）
+_transcode_profile_pair = TranscodeProfilePair(
+    primary=PROFILE_FAST_1080P30_PRIMARY,
+    fallback=PROFILE_FAST_1080P30_FALLBACK,
+)
 
 # Output directory for downloads
 OUTPUT_DIR = Path(os.environ.get("MG_OUTPUT_DIR", "output")).expanduser().resolve()
@@ -342,6 +365,10 @@ def _run_download(
 
     platform = _get_platform(url)
 
+    # Create output directory for the job
+    job_output_dir = OUTPUT_DIR / job_id
+    job_output_dir.mkdir(parents=True, exist_ok=True)
+
     # Use manual parser for Threads (yt-dlp doesn't support it yet)
     if platform == "threads":
         try:
@@ -357,15 +384,29 @@ def _run_download(
 
             if downloaded_file and downloaded_file.exists():
                 file_size = downloaded_file.stat().st_size
+                logger.info(
+                    f"[{job_id}] File saved: {downloaded_file} ({file_size} bytes)"
+                )
+
+                # 應用轉碼（如果需要）
+                final_file = _apply_transcode(
+                    job_id, downloaded_file, fmt, downloaded_file.stem, job_output_dir
+                )
+
+                final_file_size = final_file.stat().st_size
+                logger.info(
+                    f"[{job_id}] Final file: {final_file} ({final_file_size} bytes)"
+                )
+
                 _update_job(
                     job_id,
                     status="completed",
                     stage="completed",
                     percent=100,
                     message="下載完成！",
-                    title=downloaded_file.stem,
-                    filePath=str(downloaded_file),
-                    fileSize=file_size,
+                    title=final_file.stem,
+                    filePath=str(final_file),
+                    fileSize=final_file_size,
                     downloadUrl=f"/api/downloads/{job_id}/file",
                 )
             else:
@@ -480,6 +521,16 @@ def _run_download(
                     f"[{job_id}] File saved: {downloaded_file} ({file_size} bytes)"
                 )
 
+                # 應用轉碼（如果需要）
+                final_file = _apply_transcode(
+                    job_id, downloaded_file, fmt, title, job_output_dir
+                )
+
+                final_file_size = final_file.stat().st_size
+                logger.info(
+                    f"[{job_id}] Final file: {final_file} ({final_file_size} bytes)"
+                )
+
                 _update_job(
                     job_id,
                     status="completed",
@@ -487,8 +538,8 @@ def _run_download(
                     percent=100,
                     message="下載完成！",
                     title=title,
-                    filePath=str(downloaded_file),
-                    fileSize=file_size,
+                    filePath=str(final_file),
+                    fileSize=final_file_size,
                     downloadUrl=f"/api/downloads/{job_id}/file",
                 )
             else:
@@ -552,6 +603,129 @@ def _progress_hook(job_id: str, d: dict) -> None:
             percent=95,
             message="處理中...",
         )
+
+
+def _apply_transcode(
+    job_id: str, downloaded_file: Path, fmt: str, title: str, output_dir: Path
+) -> Path:
+    """應用轉碼（強制對所有 MP4 檔案進行轉碼）。
+
+    對於所有 MP4 檔案，強制執行轉碼以確保相容性和一致性。
+    對於 MP3 檔案，返回原檔案（已由 yt-dlp 提取）。
+
+    Args:
+        job_id: 任務 ID
+        downloaded_file: 下載的檔案路徑
+        fmt: 要求的格式（mp4 或 mp3）
+        title: 影片標題
+        output_dir: 輸出目錄
+
+    Returns:
+        最終檔案的路徑
+    """
+    # 只對 MP4 檔案進行轉碼
+    if fmt != "mp4":
+        logger.debug(f"[{job_id}] Skipping transcode for {fmt} format")
+        return downloaded_file
+
+    # 檢查檔案是否是 MP4
+    if not downloaded_file.suffix.lower() == ".mp4":
+        logger.debug(f"[{job_id}] Downloaded file is {downloaded_file.suffix}, not MP4")
+        return downloaded_file
+
+    # 強制轉碼所有 MP4 檔案
+    file_size_mb = downloaded_file.stat().st_size / (1024 * 1024)
+    logger.info(
+        f"[{job_id}] Starting mandatory transcode for: {downloaded_file.name} ({file_size_mb:.2f} MB)"
+    )
+
+    _update_job(
+        job_id,
+        status="transcoding",
+        stage="transcoding",
+        percent=96,
+        message="轉碼中...",
+    )
+
+    try:
+        # 訂閱進度匯流排以更新任務進度
+        def on_progress(state):
+            if state.job_id == job_id:
+                _update_job(
+                    job_id,
+                    percent=state.percent,
+                    message=state.message,
+                )
+
+        _progress_bus.subscribe(on_progress)
+
+        try:
+            # 建立 DownloadJob 物件用於轉碼服務
+            job = DownloadJob(
+                job_id=job_id,
+                source_url="",  # 轉碼時不需要來源 URL
+                platform="youtube",  # 此值在轉碼時不重要
+                requested_format=fmt,
+                download_backend="yt-dlp",
+                profile=_transcode_profile_pair,
+                output_dir=output_dir,
+            )
+
+            # 準備輸出檔案路徑
+            output_file = output_dir / f"{title}_transcoded.mp4"
+
+            # 使用事件迴圈執行轉碼
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    _transcode_service.transcode_primary(
+                        job, downloaded_file, output_file, _transcode_profile_pair
+                    )
+                )
+            finally:
+                loop.close()
+
+            if result.error:
+                logger.error(f"[{job_id}] Transcode error: {result.error.message}")
+                _update_job(
+                    job_id,
+                    message=f"轉碼失敗: {result.error.message}",
+                )
+                # 返回原始檔案作為備選
+                return downloaded_file
+
+            if output_file.exists():
+                output_size_mb = output_file.stat().st_size / (1024 * 1024)
+                compression_ratio = result.compression_ratio
+                logger.info(
+                    f"[{job_id}] Transcode completed: {output_file.name} "
+                    f"({output_size_mb:.2f} MB, compression ratio: {compression_ratio:.2%})"
+                )
+
+                # 刪除原始下載檔案
+                try:
+                    downloaded_file.unlink()
+                    logger.debug(f"[{job_id}] Removed original file: {downloaded_file}")
+                except Exception as e:
+                    logger.warning(f"[{job_id}] Failed to remove original file: {e}")
+
+                return output_file
+            else:
+                logger.warning(f"[{job_id}] Transcode output file not created")
+                return downloaded_file
+
+        finally:
+            _progress_bus.unsubscribe(on_progress)
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Transcode failed: {e}", exc_info=True)
+        _update_job(
+            job_id,
+            message=f"轉碼失敗: {str(e)}",
+        )
+        # 返回原始檔案作為備選
+        return downloaded_file
 
 
 @downloads_bp.route("", methods=["POST"])

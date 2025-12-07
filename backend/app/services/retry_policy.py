@@ -1,4 +1,10 @@
-"""Exponential backoff + error classification for resilient download/transcode."""
+"""重試策略：指數退避 + 錯誤分類，用於增強下載/轉碼的穩定性。
+
+此模組實現了智能的重試策略，包括：
+1. 指數退避：每次重試的等待時間指數增長
+2. 錯誤分類：根據錯誤類型採取不同的重試策略
+3. 補救建議：為使用者提供明確的解決方案
+"""
 
 from __future__ import annotations
 
@@ -11,14 +17,20 @@ T = TypeVar("T")
 
 
 class ErrorCategory(Enum):
-    """Classification of errors for retry logic."""
+    """錯誤分類：為重試逻輯將錯誤分類。
 
-    TRANSIENT_NETWORK = "transient_network"  # e.g. timeout, 429
-    PLATFORM_THROTTLE = "platform_throttle"  # explicit rate limit
-    AUTH_FAILURE = "auth_failure"  # credentials/cookies issue
-    MISSING_DEPENDENCY = "missing_dependency"  # ffmpeg not found, etc.
-    IO_ERROR = "io_error"  # disk full, permission denied
-    PERMANENT = "permanent"  # video not found, platform ban
+    不同類型的錯誤會採用不同的重試策略：
+    - 暫時性錯誤：短時間內重試
+    - 平台限流：需要較長的等待時間
+    - 永久性錯誤：不應重試
+    """
+
+    TRANSIENT_NETWORK = "transient_network"  # 暫時性網路問題，例如：逾時、429 錯誤
+    PLATFORM_THROTTLE = "platform_throttle"  # 平台明確的速率限制
+    AUTH_FAILURE = "auth_failure"  # 認證失敗，例如：cookies 或憑證問題
+    MISSING_DEPENDENCY = "missing_dependency"  # 缺少依賴，例如：ffmpeg 未安裝
+    IO_ERROR = "io_error"  # I/O 錯誤，例如：磁碟已滿、權限不足
+    PERMANENT = "permanent"  # 永久性錯誤，例如：影片不存在、帳號被封鎖
 
 
 @dataclass(slots=True)
@@ -33,7 +45,21 @@ class RetryRemedy:
 
 
 class RetryPolicy:
-    """Exponential backoff with category-based backoff multipliers."""
+    """重試策略：指數退避配合基於分類的退避乘數。
+
+    此類別實現了智能重試策略：
+    - 指數退避：等待時間每次翻倍（2^attempt）
+    - 分類加權：平台限流等特定錯誤使用更長的等待時間
+    - 最大延遲限制：防止等待時間過長
+
+    屬性:
+        _max_attempts: 最大重試次數
+        _base_delay: 基礎延遲時間（秒）
+        _max_delay: 最大延遲時間（秒）
+        _clock: 時鐘函式（主要用於測試）
+        _attempt_count: 目前嘗試次數
+        _last_error: 最後一次的錯誤
+    """
 
     def __init__(
         self,
@@ -42,6 +68,17 @@ class RetryPolicy:
         max_delay_seconds: float = 60.0,
         clock: Optional[Callable[[], float]] = None,
     ) -> None:
+        """初始化重試策略。
+
+        Args:
+            max_attempts: 最大重試次數（預設 3 次）
+            base_delay_seconds: 基礎延遲時間（預設 1 秒）
+            max_delay_seconds: 最大延遲時間（預設 60 秒）
+            clock: 自定義時鐘函式（可選，主要用於測試）
+
+        Raises:
+            ValueError: 如果 max_attempts < 1
+        """
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
         self._max_attempts = max_attempts

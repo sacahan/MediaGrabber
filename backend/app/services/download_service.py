@@ -1,4 +1,11 @@
-"""Core download service handling YouTube and social platforms."""
+"""核心下載服務：處理 YouTube 和社交平台的媒體下載。
+
+此服務是整個下載系統的核心，負責：
+1. 協調 YouTube 和社交平台的下載
+2. 管理重試策略和錯誤處理
+3. 發布進度更新到進度匯流排
+4. 支援自動重試和指數退避
+"""
 
 from __future__ import annotations
 
@@ -14,19 +21,40 @@ from .progress_bus import ProgressBus
 
 @dataclass(slots=True)
 class DownloadResult:
-    """Result of a download operation."""
+    """下載結果：代表一次下載操作的結果。
 
-    file_path: Path
-    size_bytes: int
-    duration_seconds: Optional[float] = None
-    error: Optional[DownloadError] = None
+    屬性:
+        file_path: 下載檔案的完整路徑
+        size_bytes: 檔案大小（位元組）
+        duration_seconds: 下載持續時間（秒）
+        error: 錯誤資訊（如果失敗）
+    """
+
+    file_path: Path  # 下載檔案路徑
+    size_bytes: int  # 檔案大小
+    duration_seconds: Optional[float] = None  # 下載時間
+    error: Optional[DownloadError] = None  # 錯誤資訊
 
 
 class DownloadService:
-    """Unified download orchestration for YouTube and social platforms."""
+    """統一下載服務：為 YouTube 和社交平台提供統一的下載協調。
+
+    此類別整合了不同平台的下載逻輯，提供統一的介面和錯誤處理。
+    支援 YouTube（使用 pytubefix）和其他社交平台（使用 yt-dlp）。
+
+    屬性:
+        _bus: 進度匯流排，用於發布進度更新
+        _retry_policy: 重試策略，管理失敗重試逻輯
+    """
 
     def __init__(self, progress_bus: ProgressBus) -> None:
+        """初始化下載服務。
+
+        Args:
+            progress_bus: 進度匯流排實例，用於發布進度更新
+        """
         self._bus = progress_bus
+        # 設定重試策略：最多 3 次重試，基礎延遲 1 秒
         self._retry_policy = RetryPolicy(max_attempts=3, base_delay_seconds=1.0)
 
     async def download_youtube(
@@ -34,9 +62,23 @@ class DownloadService:
         job: DownloadJob,
         url: str,
     ) -> DownloadResult:
-        """Download video from YouTube using pytubefix."""
-        # Placeholder implementation
-        # This will be filled in with actual pytubefix integration
+        """下載 YouTube 影片：使用 pytubefix 庫下載 YouTube 影片。
+
+        注意：目前實際的下載邏輯在 api/downloads.py 中使用 yt-dlp 實現。
+        此方法是為未來的服務層架構重構預留的介面。
+
+        pytubefix 是專門為 YouTube 最佳化的下載庫，提供更好的效能和穩定性。
+        未來會整合到此處以提供統一的服務層介面。
+
+        Args:
+            job: 下載任務物件
+            url: YouTube 影片的 URL
+
+        Returns:
+            下載結果，包含檔案路徑和大小
+        """
+        # 目前使用占位實現，實際下載邏輯在 api/downloads.py 的 _run_download 函數中
+        # 使用 yt-dlp 進行下載和格式轉換
         await self._publish_progress(
             job, "downloading", "Initializing YouTube download...", 10.0
         )
@@ -51,9 +93,28 @@ class DownloadService:
         url: str,
         cookies_path: Optional[Path] = None,
     ) -> DownloadResult:
-        """Download video from Instagram/Facebook/X using yt-dlp."""
-        # Placeholder implementation
-        # This will be filled in with actual yt-dlp integration
+        """下載社交平台影片：使用 yt-dlp 下載 Instagram/Facebook/X 影片。
+
+        注意：目前實際的下載邏輯在 api/downloads.py 中實現。
+        此方法是為未來的服務層架構重構預留的介面。
+
+        yt-dlp 支援多種社交平台，並可使用 cookies 處理需要認證的內容。
+        實際實現包含：
+        - 自動平台檢測
+        - Threads 平台的手動解析器（yt-dlp 尚不支援）
+        - 其他平台使用 yt-dlp 處理
+        - 自動格式選擇和轉換（MP4/MP3）
+
+        Args:
+            job: 下載任務物件
+            url: 社交平台影片的 URL
+            cookies_path: cookies 檔案路徑（可選），用於處理需要登入的內容
+
+        Returns:
+            下載結果，包含檔案路徑和大小
+        """
+        # 目前使用占位實現，實際下載邏輯在 api/downloads.py 的 _run_download 函數中
+        # 包含完整的 yt-dlp 整合和 Threads 手動解析器
         await self._publish_progress(
             job, "downloading", "Initializing social media download...", 10.0
         )
