@@ -210,9 +210,11 @@ class TranscodeService:
             x264_option,  # 自訂 x264 參數 (vbv-bufsize, vbv-maxrate)
             "-r",
             "30",  # 30 fps
-            # 縮放設定（如果需要）
+            # 縮放設定（強制轉換為 9:16 手機直豎格式）
+            # scale: 縮放至目標尺寸，使用 increase 以放大較小影片
+            # crop: 從中央裁剪任何超出部分，確保精確的目標解析度
             "-vf",
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2",
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}:(ow-iw)/2:(oh-ih)/2",
             # 音訊編碼器和參數
             "-c:a",
             "aac",

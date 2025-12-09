@@ -2,16 +2,18 @@
 
 此模組定義了影片轉碼的各種參數，基於 HandBrake 的 "Fast 1080p30" 預設。
 包括解析度、位元率、檔案大小限制等。
+轉碼過程強制轉換為 9:16 的手機標準格式（直豎格式），適合現代手機和社交媒體。
 如果主要設定檔產生的檔案過大，會自動切換到備用設定檔。
 
 HandBrake Fast 1080p30 預設參數對應：
 - 視訊編碼器：H.264 (libx264)
-- 解析度：1920x1080
+- 解析度：1080x1920（主要）/ 720x1280（備用）
 - 位元率：6000 kbps
 - CRF：22 (品質因子)
 - 幀率：30 fps
 - 音訊：AAC 160 kbps 立體聲
 - 預設：fast (編碼速度)
+- 長寬比：9:16（強制，直豎格式）
 """
 
 from __future__ import annotations
@@ -80,33 +82,33 @@ class TranscodeProfilePair:
 # 使用優化的 x264 參數支援線上播放
 
 # 主要設定檔：高品質（適合桌面和高端行動設備）
-# 1920x1080, 使用 Baseline Profile + Level 4.0 確保最大兼容性
+# 1080x1920 (9:16), 直豎格式，適合 Instagram Reels 和現代手機
 # 注意：x264_params 不包含 crf (在 transcode_service 中單獨指定)
 PROFILE_FAST_1080P30_PRIMARY = TranscodeProfile(
     name="mobile-primary",
-    resolution=(1920, 1080),  # 1080p
-    video_bitrate_kbps=20000,  # VBV 最大位元率
+    resolution=(1080, 1920),  # 1080x1920 (9:16 直豎)
+    video_bitrate_kbps=15000,  # 視訊位元率
     audio_bitrate_kbps=160,  # AAC 立體聲
-    max_filesize_mb=500,  # 1 小時視訊限制
+    max_filesize_mb=400,  # 檔案限制
     crf=22,  # 品質因子
-    x264_params="vbv-bufsize=31250:vbv-maxrate=25000",  # 移除 level，由 ffmpeg -level 4.0 指定
+    x264_params="vbv-bufsize=23438:vbv-maxrate=18750",
     container="mp4",
 )
 
 # 備用設定檔：低品質（適合低端行動設備或網路有限環境）
-# 1280x720, 降低的 x264 參數，同樣使用 Baseline Profile
+# 720x1280 (9:16), 直豎格式
 PROFILE_FAST_1080P30_FALLBACK = TranscodeProfile(
     name="mobile-fallback",
-    resolution=(1280, 720),  # 720p
-    video_bitrate_kbps=10000,  # 降低 VBV 位元率
+    resolution=(720, 1280),  # 720x1280 (9:16 直豎)
+    video_bitrate_kbps=8000,  # 降低 VBV 位元率
     audio_bitrate_kbps=128,  # 降低音訊位元率
-    max_filesize_mb=300,  # 更小的檔案限制
+    max_filesize_mb=250,  # 更小的檔案限制
     crf=28,  # 較低的品質
-    x264_params="vbv-bufsize=15625:vbv-maxrate=12500",  # 移除 level，由 ffmpeg -level 4.0 指定
+    x264_params="vbv-bufsize=12500:vbv-maxrate=10000",
     container="mp4",
 )
 
-# 預設配對
+# 預設配對（所有平台使用統一的 9:16 直豎格式）
 DEFAULT_TRANSCODE_PROFILE = TranscodeProfilePair(
     primary=PROFILE_FAST_1080P30_PRIMARY,
     fallback=PROFILE_FAST_1080P30_FALLBACK,

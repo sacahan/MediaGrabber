@@ -20,11 +20,7 @@ from flask import Blueprint, jsonify, request, send_file
 from ..services.transcode_service import TranscodeService
 from ..services.transcode_queue import TranscodeQueue
 from ..services.progress_bus import ProgressBus
-from ..models.transcode_profile import (
-    PROFILE_FAST_1080P30_PRIMARY,
-    PROFILE_FAST_1080P30_FALLBACK,
-    TranscodeProfilePair,
-)
+from ..models.transcode_profile import DEFAULT_TRANSCODE_PROFILE
 from ..models.download_job import DownloadJob
 
 # Configure module logger
@@ -42,10 +38,8 @@ _transcode_queue = TranscodeQueue(max_workers=2)  # 最多同時轉碼 2 個檔�
 _transcode_service = TranscodeService(_transcode_queue, _progress_bus)
 
 # 轉碼設定檔配對（主要 + 備用）
-_transcode_profile_pair = TranscodeProfilePair(
-    primary=PROFILE_FAST_1080P30_PRIMARY,
-    fallback=PROFILE_FAST_1080P30_FALLBACK,
-)
+# 所有平台統一使用 9:16 直豎格式
+_transcode_profile_pair = DEFAULT_TRANSCODE_PROFILE
 
 # Output directory for downloads
 OUTPUT_DIR = Path(os.environ.get("MG_OUTPUT_DIR", "output")).expanduser().resolve()
