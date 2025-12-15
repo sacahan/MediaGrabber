@@ -474,20 +474,17 @@
     if (!url.trim()) return;
 
     // Validate Threads cookies if on Threads tab
+    // Validate Threads cookies if on Threads tab
     if (activeTab === "threads") {
-      if (!threadsCookies.trim()) {
-        threadsCookiesError = "Threads 下載需要提供登入 Cookies";
-        message = "請先輸入 Threads/Instagram Cookies";
-        return;
+      // Only validate if cookies are provided (now optional)
+      if (threadsCookies.trim()) {
+        if (!validateThreadsCookies(threadsCookies)) {
+          threadsCookiesError =
+            "Cookies 格式無效，請使用 Netscape cookies.txt 格式";
+          message = "Cookies 格式無效";
+          return;
+        }
       }
-
-      if (!validateThreadsCookies(threadsCookies)) {
-        threadsCookiesError =
-          "Cookies 格式無效，請使用 Netscape cookies.txt 格式";
-        message = "Cookies 格式無效";
-        return;
-      }
-
       threadsCookiesError = "";
     }
 
@@ -723,11 +720,11 @@
                 <h4
                   class="text-sm font-semibold text-amber-800 dark:text-amber-200"
                 >
-                  需要登入認證
+                  需要登入認證 (選填)
                 </h4>
                 <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  Threads 下載需要提供登入後的 Cookies。請從瀏覽器匯出 Netscape
-                  格式的 cookies.txt 內容。
+                  若要下載公開貼文可嘗試直接下載。如遇受限內容，請提供登入後的
+                  Cookies (Netscape 格式)。
                 </p>
                 <details
                   class="mt-2 text-xs text-amber-600 dark:text-amber-400"

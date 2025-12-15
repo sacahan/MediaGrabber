@@ -88,6 +88,8 @@ python -m app.web
 
 The Flask API will be running on `http://localhost:8080`. API logs will be saved in `backend/logs/app.log`.
 
+> **API Documentation**: Interactive Swagger/OpenAPI documentation is available at `http://localhost:8080/api/docs`.
+
 #### 2. Frontend (Svelte with Tailwind CSS)
 
 Navigate to the `frontend` directory and start the Svelte development server:
@@ -109,6 +111,7 @@ The Web UI provides real-time progress tracking and unified access to all downlo
 - Instagram: MP4 (mobile-optimized)
 - Facebook: MP4 (mobile-optimized)
 - X (Twitter): MP4 (mobile-optimized)
+- Threads: MP4 (mobile-optimized, requires cookies for some content)
 
 **Progress Dashboard**:
 
