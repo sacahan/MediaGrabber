@@ -51,6 +51,12 @@
   const HISTORY_STORAGE_KEY = "mediagrabber_download_history";
   const HISTORY_MAX_AGE_HOURS = 24; // 24 hours
 
+  // --- Sorting State ---
+  type SortBy = "time" | "size" | "platform";
+  type SortOrder = "asc" | "desc";
+  let sortBy: SortBy = "time";
+  let sortOrder: SortOrder = "desc";
+
   // --- Progress & Remediation State (T026, T045) ---
   let progressState: ProgressState | null = null;
   let queueDepth = 0;
@@ -115,17 +121,24 @@
 
   // --- Lifecycle ---
   onMount(() => {
-    // Initialize theme based on user preference
-    if (
-      localStorage.getItem("theme") === "dark" ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
+    // Initialize theme based on user preference or time of day
+    const savedTheme = localStorage.getItem("theme");
+
+    if (savedTheme) {
+      // User has manually set a preference, respect it
+      isDark = savedTheme === "dark";
+    } else {
+      // No user preference, use time-based auto-switching
+      const hour = new Date().getHours();
+      // Dark mode: 18:00 (6 PM) to 6:00 (6 AM)
+      // Light mode: 6:00 (6 AM) to 18:00 (6 PM)
+      isDark = hour >= 18 || hour < 6;
+    }
+
+    if (isDark) {
       document.documentElement.classList.add("dark");
-      isDark = true;
     } else {
       document.documentElement.classList.remove("dark");
-      isDark = false;
     }
 
     // Load download history from localStorage
@@ -208,6 +221,36 @@
     return "超過一天";
   }
 
+  // --- Sorting Functions ---
+  function sortHistory(items: DownloadHistoryItem[]): DownloadHistoryItem[] {
+    const sorted = [...items];
+
+    sorted.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case "time":
+          comparison = a.completedAt - b.completedAt;
+          break;
+        case "size":
+          const sizeA = a.fileSize || 0;
+          const sizeB = b.fileSize || 0;
+          comparison = sizeA - sizeB;
+          break;
+        case "platform":
+          comparison = a.platform.localeCompare(b.platform);
+          break;
+      }
+
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }
+
+  // Reactive sorted history
+  $: sortedHistory = sortHistory(downloadHistory);
+
   function toggleTheme() {
     isDark = !isDark;
     if (isDark) {
@@ -229,7 +272,7 @@
   function startProgressPolling(jobId) {
     if (stopPolling) stopPolling();
 
-    stopPolling = pollJobProgress(jobId, (progress) => {
+    stopPolling = pollJobProgress(jobId, async (progress) => {
       progressState = progress;
       downloadProgress = Math.round(progress.percent);
       queueDepth = progress.queueDepth || 0;
@@ -255,6 +298,18 @@
         downloadFileUrl = `${API_BASE_URL}/api/downloads/${jobId}/file`;
         showDownloadButtons = true;
 
+        // Fetch file size from job status
+        let fileSize: number | undefined = undefined;
+        try {
+          const jobResponse = await fetch(`${API_BASE_URL}/api/downloads/${jobId}`);
+          if (jobResponse.ok) {
+            const jobData = await jobResponse.json();
+            fileSize = jobData.fileSize;
+          }
+        } catch (e) {
+          console.error("Failed to fetch file size:", e);
+        }
+
         const historyItem: DownloadHistoryItem = {
           jobId: jobId,
           title:
@@ -265,6 +320,7 @@
           format: selectedFormat,
           platform: activeTab,
           downloadUrl: downloadFileUrl,
+          fileSize: fileSize,
           completedAt: Date.now(),
         };
         addToDownloadHistory(historyItem);
@@ -879,6 +935,9 @@
                 />
               </svg>
               下載檔案
+              {#if downloadHistory.length > 0 && downloadHistory[0].fileSize}
+                <span class="ml-2 text-sm opacity-90">({formatFileSize(downloadHistory[0].fileSize)})</span>
+              {/if}
             </a>
           </div>
         {/if}
@@ -892,16 +951,51 @@
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
             最近下載
           </h2>
-          <button
-            on:click={clearAllHistory}
-            class="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
-          >
-            清除記錄
-          </button>
+          <div class="flex items-center gap-4">
+            <!-- Sort Controls -->
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">排序:</label>
+              <select
+                bind:value={sortBy}
+                class="text-sm px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="time">下載時間</option>
+                <option value="size">檔案大小</option>
+                <option value="platform">平台</option>
+              </select>
+
+              <button
+                on:click={() => sortOrder = sortOrder === "asc" ? "desc" : "asc"}
+                class="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={sortOrder === "asc" ? "升序" : "降序"}
+              >
+                <svg
+                  class="w-4 h-4 text-gray-600 dark:text-gray-300 transition-transform {sortOrder === 'asc' ? 'rotate-180' : ''}"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <button
+              on:click={clearAllHistory}
+              class="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
+            >
+              清除記錄
+            </button>
+          </div>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {#each downloadHistory as item (item.jobId)}
+          {#each sortedHistory as item (item.jobId)}
             <div
               class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow"
             >
@@ -937,17 +1031,24 @@
               >
                 {item.title}
               </h3>
-              <div
-                class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-4"
-              >
-                <span>{formatTimeAgo(item.completedAt)}</span>
-                <a
-                  href={item.downloadUrl}
-                  download
-                  class="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              <div class="mt-3 space-y-2">
+                {#if item.fileSize}
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    檔案大小: {formatFileSize(item.fileSize)}
+                  </div>
+                {/if}
+                <div
+                  class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
                 >
-                  再次下載
-                </a>
+                  <span>{formatTimeAgo(item.completedAt)}</span>
+                  <a
+                    href={item.downloadUrl}
+                    download
+                    class="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    再次下載
+                  </a>
+                </div>
               </div>
             </div>
           {/each}
@@ -989,13 +1090,31 @@
               </div>
             </div>
             <div
-              class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200 dark:bg-gray-700"
+              class="overflow-hidden h-2 mb-2 text-xs flex rounded bg-blue-200 dark:bg-gray-700"
             >
               <div
                 style="width: {downloadProgress}%"
                 class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"
               ></div>
             </div>
+
+            <!-- File Size Info -->
+            {#if progressState && progressState.downloadedBytes > 0}
+              <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span>已下載: {formatBytes(progressState.downloadedBytes)}</span>
+                {#if progressState.totalBytes > 0}
+                  <span>總大小: {formatBytes(progressState.totalBytes)}</span>
+                {/if}
+              </div>
+              {#if progressState.speed > 0}
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  速度: {formatSpeed(progressState.speed)}
+                  {#if progressState.etaSeconds > 0}
+                    <span class="ml-2">預計剩餘: {formatETA(progressState.etaSeconds)}</span>
+                  {/if}
+                </div>
+              {/if}
+            {/if}
           </div>
 
           {#if remediation}
