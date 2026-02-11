@@ -1,0 +1,65 @@
+name: MediaGrabber CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: media-grabber
+  CONTAINER_NAME: media-grabber
+  PORT: 8080
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: scripts/Dockerfile
+          push: false
+          load: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'https://media.brianhan.cc' }}
+
+      - name: Stop and remove old container
+        run: |
+          docker stop ${{ env.CONTAINER_NAME }} || true
+          docker rm ${{ env.CONTAINER_NAME }} || true
+
+      - name: Run new container
+        run: |
+          docker run -d \
+            --name ${{ env.CONTAINER_NAME }} \
+            -p ${{ env.PORT }}:8080 \
+            -e TZ=Asia/Taipei \
+            -e FLASK_ENV=production \
+            -e MG_MAX_TRANSCODE_WORKERS=${{ secrets.MG_MAX_TRANSCODE_WORKERS || '2' }} \
+            -e MG_PROGRESS_TTL_SECONDS=${{ secrets.MG_PROGRESS_TTL_SECONDS || '300' }} \
+            -e MG_LOG_LEVEL=${{ secrets.MG_LOG_LEVEL || 'INFO' }} \
+            -v ${{ github.workspace }}/logs:/app/logs \
+            -v ${{ github.workspace }}/output:/app/output \
+            --restart unless-stopped \
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Health check
+        run: |
+          echo "Waiting for service to start..."
+          sleep 10
+          curl -f http://localhost:${{ env.PORT }}/health || (docker logs ${{ env.CONTAINER_NAME }} && exit 1)
+
+      - name: Cleanup old images
+        run: |
+          docker image prune -f

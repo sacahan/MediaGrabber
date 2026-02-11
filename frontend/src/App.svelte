@@ -44,6 +44,7 @@
   let downloadFileUrl = null;
   let showDownloadButtons = false;
   let isDark = false;
+  let isSharing = false; // Share loading state
 
   // --- Download History State ---
   let downloadHistory: DownloadHistoryItem[] = [];
@@ -576,6 +577,52 @@
       clearBtnDisabled = false;
     }
   }
+
+  /**
+   * Share the downloaded file directly to Line using Web Share API.
+   * On desktop, it shows a reminder alert.
+   */
+  async function shareToLine() {
+    if (!downloadFileUrl) return;
+
+    // Web Share API file sharing is mostly supported on mobile browsers
+    if (!navigator.share || !navigator.canShare) {
+      alert("請在手機瀏覽器上使用此功能，以便直接分享檔案到 Line");
+      return;
+    }
+
+    isSharing = true;
+    try {
+      // 1. Fetch the file blob
+      const response = await fetch(downloadFileUrl);
+      const blob = await response.blob();
+
+      // 2. Create File object
+      const mimeType = selectedFormat === "mp3" ? "audio/mpeg" : "video/mp4";
+      const extension = selectedFormat;
+      const fileName = `mediagrabber_download.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      // 3. Check if file sharing is supported
+      if (!navigator.canShare({ files: [file] })) {
+        alert("您的瀏覽器不支援分享此類型檔案");
+        return;
+      }
+
+      // 4. Trigger system share sheet
+      await navigator.share({
+        files: [file],
+      });
+    } catch (error) {
+      // Don't show error if user cancels (AbortError)
+      if (error.name !== "AbortError") {
+        console.error("Share failed:", error);
+        alert("分享失敗，請稍後再試");
+      }
+    } finally {
+      isSharing = false;
+    }
+  }
 </script>
 
 <div
@@ -916,29 +963,75 @@
             >
               準備就緒！
             </h3>
-            <a
-              href={downloadFileUrl}
-              download
-              class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 md:py-4 md:text-lg md:px-10 transition-colors shadow-md"
-            >
-              <svg
-                class="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+              <a
+                href={downloadFileUrl}
+                download
+                class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 md:py-4 md:text-lg md:px-10 transition-colors shadow-md"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              下載檔案
-              {#if downloadHistory.length > 0 && downloadHistory[0].fileSize}
-                <span class="ml-2 text-sm opacity-90">({formatFileSize(downloadHistory[0].fileSize)})</span>
-              {/if}
-            </a>
+                <svg
+                  class="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                下載檔案
+                {#if downloadHistory.length > 0 && downloadHistory[0].fileSize}
+                  <span class="ml-2 text-sm opacity-90"
+                    >({formatFileSize(downloadHistory[0].fileSize)})</span
+                  >
+                {/if}
+              </a>
+
+              <button
+                on:click={shareToLine}
+                disabled={isSharing}
+                class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-[#06C755] hover:bg-[#05b34c] md:py-4 md:text-lg md:px-10 transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {#if isSharing}
+                  <svg
+                    class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  處理中...
+                {:else}
+                  <svg
+                    class="w-6 h-6 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M24 10.304c0-4.58-4.665-8.304-10.4-8.304s-10.4 3.724-10.4 8.304c0 4.104 3.693 7.545 8.682 8.196.338.073.798.223.914.512.105.26.069.667.034.929l-.147.886c-.045.267-.212 1.045 1.045.57 1.257-.474 6.784-3.996 9.249-6.848 1.706-1.859 2.467-3.525 2.467-5.245zm-14.735 2.162h-1.53c-.156 0-.284-.127-.284-.284v-3.763c0-.156.127-.284.284-.284h1.53c.156 0 .284.127.284.284v.266c0 .156-.127.284-.284.284H9.623v1.077h1.142c.156 0 .284.127.284.284v.265c0 .156-.127.284-.284.284H9.623v1.078h1.142c.156 0 .284.127.284.284v.266c0 .157-.128.284-.284.284zm2.636 0h-.265c-.156 0-.284-.127-.284-.284v-3.763c0-.156.127-.284.284-.284h.265c.156 0 .284.127.284.284v3.763c0 .156-.128.284-.284.284zm3.921 0h-1.53c-.156 0-.284-.127-.284-.284v-3.763c0-.156.127-.284.284-.284h.265c.156 0 .284.127.284.284v3.213h.981c.156 0 .284.127.284.284v.266c.001.157-.127.284-.284.284zm3.434 0H17.73c-.156 0-.284-.127-.284-.284v-3.763c0-.156.127-.284.284-.284h1.53c.156 0 .284.127.284.284v.266c0 .156-.127.284-.284.284h-1.246v1.077h1.142c.156 0 .284.127.284.284v.265c0 .156-.127.284-.284.284h-1.142v1.078h1.246c.156 0 .284.127.284.284v.266c0 .157-.128.284-.284.284z"
+                    />
+                  </svg>
+                  分享到 Line
+                {/if}
+              </button>
+            </div>
           </div>
         {/if}
       </div>
